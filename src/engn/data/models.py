@@ -55,7 +55,7 @@ class Property(BaseDataModel):
         # Check for list/map generics
         if v.startswith("list[") and v.endswith("]"):
             # Simple recursive check (could be improved)
-            inner = v[5:-1]
+            # inner = v[5:-1]
             # Recursively validate inner type would be ideal but for now we just
             # check primitives or assume it's a forward reference to a defined type
             return v

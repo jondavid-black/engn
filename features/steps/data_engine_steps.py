@@ -1,7 +1,6 @@
 from behave import given, when, then  # type: ignore
 from engn.data.models import TypeDef, Property, Enumeration
 from engn.data.storage import JSONLStorage
-from pathlib import Path
 
 
 @given("a temporary directory for data storage")  # type: ignore

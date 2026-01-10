@@ -1,4 +1,3 @@
-import pytest
 from pydantic import TypeAdapter
 from engn.data.models import TypeDef, Property, Enumeration, Schema
 from engn.data.storage import JSONLStorage, EngnDataModel

@@ -1,5 +1,4 @@
 import pytest
-from pydantic import ValidationError
 
 from engn.data.models import Property
 from engn.data.primitives import PRIMITIVE_TYPE_MAP, ReferenceMarker
