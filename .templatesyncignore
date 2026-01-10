@@ -1,0 +1,20 @@
+# Protect project-specific metadata
+.gitignore
+LICENSE
+package.json
+package-lock.json
+pyproject.toml
+uv.lock
+README.md
+
+# Protect your actual source code
+src/
+tests/
+docs/
+features/
+
+# Allow the sync to update these AI-specific files:
+# .clinerules
+# .opencode/
+# AGENTS.md
+# .github/workflows/sync-template.yml

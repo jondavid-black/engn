@@ -1,0 +1,31 @@
+name: Sync Template Updates
+
+on:
+  # Allows you to run this manually from the Actions tab
+  workflow_dispatch:
+  # Runs automatically at 00:00 UTC every Monday
+  schedule:
+    - cron: "0 0 * * 1"
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    # Do not run on the template repo itself
+    if: github.repository != 'Yjondavid-black/python_agent_workspace_template'
+
+    steps:
+      - name: Checkout Child Repo
+        uses: actions/checkout@v4
+
+      - name: Actions Template Sync
+        uses: AndreasAugustin/actions-template-sync@v2
+        with:
+          # The source template repository
+          source_repo_path: jondavid-black/python_agent_workspace_template
+          # Branch to pull from
+          source_repo_branch: main
+          # This will create a new branch and a PR for you to review
+          pr_title: "[AI-Sync] Update Agentic Tools & Instructions"
+          pr_labels: automation, ai-tools
+          # Use the default GitHub Token provided by the workflow
+          github_token: ${{ secrets.GITHUB_TOKEN }}
