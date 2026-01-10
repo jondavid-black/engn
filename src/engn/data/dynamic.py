@@ -144,6 +144,41 @@ def gen_pydantic_models(
                 if prop.multiple_of is not None:
                     field_args["multiple_of"] = prop.multiple_of
 
+                # extended numeric constraints
+                # Note: 'exclude' and 'whole_number' require custom validators or field validators
+                # which are harder to attach to dynamically created Pydantic models via simple Field arguments.
+                # However, we can use 'Annotated' with 'AfterValidator' or custom field validators if we refactor.
+                # For now, let's inject simple check logic if we can, or acknowledge the limitation.
+
+                # We will handle 'exclude' and 'whole_number' by wrapping the type in Annotated with a validator
+                if prop.exclude is not None or prop.whole_number:
+                    from typing import Annotated
+                    from pydantic import AfterValidator
+
+                    validators = []
+
+                    if prop.exclude:
+                        excluded_values = set(prop.exclude)
+
+                        def check_exclude(v):
+                            if v in excluded_values:
+                                raise ValueError("Value is excluded")
+                            return v
+
+                        validators.append(AfterValidator(check_exclude))
+
+                    if prop.whole_number:
+
+                        def check_whole(v):
+                            if v % 1 != 0:
+                                raise ValueError("Value must be a whole number")
+                            return v
+
+                        validators.append(AfterValidator(check_whole))
+
+                    for v in validators:
+                        py_type = Annotated[py_type, v]
+
                 # string constraints
                 if prop.str_min is not None:
                     field_args["min_length"] = prop.str_min
@@ -151,6 +186,142 @@ def gen_pydantic_models(
                     field_args["max_length"] = prop.str_max
                 if prop.str_regex is not None:
                     field_args["pattern"] = prop.str_regex
+
+                # date/time constraints
+                if prop.before is not None or prop.after is not None:
+                    from typing import Annotated
+                    from pydantic import AfterValidator
+                    import datetime
+
+                    dt_validators = []
+
+                    if prop.before is not None:
+                        # Capture prop.before in closure
+                        limit_before = prop.before
+
+                        def check_before(v):
+                            if v >= limit_before:
+                                raise ValueError(f"Value must be before {limit_before}")
+                            return v
+
+                        dt_validators.append(AfterValidator(check_before))
+
+                    if prop.after is not None:
+                        limit_after = prop.after
+
+                        def check_after(v):
+                            if v <= limit_after:
+                                raise ValueError(f"Value must be after {limit_after}")
+                            return v
+
+                        dt_validators.append(AfterValidator(check_after))
+
+                    for v in dt_validators:
+                        py_type = Annotated[py_type, v]
+
+                # path constraints
+                if any(
+                    x is not None
+                    for x in [
+                        prop.path_exists,
+                        prop.is_dir,
+                        prop.is_file,
+                        prop.file_ext,
+                    ]
+                ):
+                    from typing import Annotated
+                    from pydantic import AfterValidator
+                    import pathlib
+
+                    path_validators = []
+
+                    if prop.path_exists:
+
+                        def check_exists(v):
+                            p = pathlib.Path(str(v))
+                            if not p.exists():
+                                raise ValueError(f"Path '{p}' does not exist")
+                            return v
+
+                        path_validators.append(AfterValidator(check_exists))
+
+                    if prop.is_dir:
+
+                        def check_is_dir(v):
+                            p = pathlib.Path(str(v))
+                            if p.exists() and not p.is_dir():
+                                raise ValueError(f"Path '{p}' is not a directory")
+                            return v
+
+                        path_validators.append(AfterValidator(check_is_dir))
+
+                    if prop.is_file:
+
+                        def check_is_file(v):
+                            p = pathlib.Path(str(v))
+                            if p.exists() and not p.is_file():
+                                raise ValueError(f"Path '{p}' is not a file")
+                            return v
+
+                        path_validators.append(AfterValidator(check_is_file))
+
+                    if prop.file_ext is not None:
+                        allowed_exts = set(prop.file_ext)
+
+                        def check_ext(v):
+                            p = pathlib.Path(str(v))
+                            # suffixes returns list, suffix returns last. Usually we check suffix.
+                            # But if user provides .tar.gz, suffix is .gz.
+                            # Let's check pure suffix for now.
+                            if p.suffix not in allowed_exts:
+                                raise ValueError(
+                                    f"File extension '{p.suffix}' not allowed. Must be one of {allowed_exts}"
+                                )
+                            return v
+
+                        path_validators.append(AfterValidator(check_ext))
+
+                    for v in path_validators:
+                        py_type = Annotated[py_type, v]
+
+                # url constraints
+                if any(x is not None for x in [prop.url_base, prop.url_protocols]):
+                    from typing import Annotated
+                    from pydantic import AfterValidator
+
+                    url_validators = []
+
+                    if prop.url_protocols is not None:
+                        allowed_protocols = set(prop.url_protocols)
+
+                        def check_protocol(v):
+                            s = str(v)
+                            if "://" not in s:
+                                raise ValueError(
+                                    "Invalid URL format (missing protocol)"
+                                )
+                            proto = s.split("://")[0]
+                            if proto not in allowed_protocols:
+                                raise ValueError(
+                                    f"Protocol '{proto}' not allowed. Must be one of {allowed_protocols}"
+                                )
+                            return v
+
+                        url_validators.append(AfterValidator(check_protocol))
+
+                    if prop.url_base is not None:
+                        base = prop.url_base
+
+                        def check_base(v):
+                            s = str(v)
+                            if not s.startswith(base):
+                                raise ValueError(f"URL must start with '{base}'")
+                            return v
+
+                        url_validators.append(AfterValidator(check_base))
+
+                    for v in url_validators:
+                        py_type = Annotated[py_type, v]
 
                 # Other custom validation logic will be handled below if needed,
                 # but Pydantic's Field handles most standard constraints.

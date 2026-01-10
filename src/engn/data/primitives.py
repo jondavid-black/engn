@@ -239,8 +239,8 @@ STANDARD_TYPES = {
     "list": list,
     "map": dict,
     "dict": dict,
-    "path": str,
-    "url": str,
+    "path": str,  # We use str here and rely on custom validators for path logic
+    "url": str,  # We use str here and rely on custom validators for URL logic
     "any": Any,
     "markdown": str,
     "StrictBool": StrictBool,
