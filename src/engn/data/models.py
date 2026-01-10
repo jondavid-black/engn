@@ -60,6 +60,36 @@ class Property(BaseDataModel):
             # check primitives or assume it's a forward reference to a defined type
             return v
         if v.startswith("map[") and v.endswith("]"):
+            inner = v[4:-1]
+            # Split by the first comma only, as complex value types might contain commas
+            parts = inner.split(",", 1)
+
+            if len(parts) != 2:
+                raise ValueError(
+                    f"Invalid map definition '{v}': Map type definition must take exactly 2 arguments (key, value)"
+                )
+
+            key_type = parts[0].strip()
+            # value_type = parts[1].strip() # We don't strictly validate value type yet as it can be any custom type
+
+            if key_type not in ("int", "str", "enum"):
+                raise ValueError(
+                    f"Invalid map key type '{key_type}': Map key type must be one of: int, str, enum"
+                )
+
+            # Validate that the value part does not contain top-level commas (meaning >2 args)
+            value_part = parts[1].strip()
+            bracket_depth = 0
+            for char in value_part:
+                if char == "[":
+                    bracket_depth += 1
+                elif char == "]":
+                    bracket_depth -= 1
+                elif char == "," and bracket_depth == 0:
+                    raise ValueError(
+                        f"Invalid map definition '{v}': Map type definition must take exactly 2 arguments (key, value)"
+                    )
+
             return v
         if v.startswith("ref[") and v.endswith("]"):
             return v
