@@ -1,6 +1,7 @@
 from behave import given, when, then
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 # Add src to sys.path to allow imports
@@ -27,11 +28,15 @@ def step_run_command(context, command):
         cmd_parts[0] = f"{cmd_parts[0]}.main"
 
     # Execute as a module
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
+
     result = subprocess.run(
         [sys.executable, "-m"] + cmd_parts,
         capture_output=True,
         text=True,
-        cwd=sys.path[0],  # Ensure we are running from project root context if needed
+        cwd=os.getcwd(),  # Use the current working directory (which might be temp dir)
+        env=env,
     )
     context.output = result.stdout.strip()
     context.return_code = result.returncode
