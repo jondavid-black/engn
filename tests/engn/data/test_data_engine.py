@@ -134,3 +134,49 @@ def test_nested_person_address_jsonl(tmp_path):
     assert isinstance(loaded_data["address"], dict)
     assert loaded_data["address"]["street"] == "123 Main St"
     assert loaded_data["address"]["zip_code"] == "62704"
+
+
+def test_out_of_order_person_processing(tmp_path):
+    """
+    Verify that data items appearing BEFORE their type definitions are handled correctly
+    by the storage.read() function's phased processing.
+    """
+    import json
+
+    file_path = tmp_path / "mixed_order.jsonl"
+
+    # 1. Person Data (appears FIRST, before Person definition)
+    person_data = {"engn_type": "Person", "name": "Time Traveler", "age": 42}
+
+    # 2. Person Type Definition (appears SECOND)
+    person_def = {
+        "engn_type": "type_def",
+        "name": "Person",
+        "properties": [{"name": "name", "type": "str"}, {"name": "age", "type": "int"}],
+    }
+
+    # Write to file in REVERSE logical order (Data then Schema)
+    with open(file_path, "w") as f:
+        f.write(json.dumps(person_data) + "\n")
+        f.write(json.dumps(person_def) + "\n")
+
+    # Initialize storage in Dynamic Mode (empty definitions list initially)
+    # This tells it to learn from the stream
+    storage = JSONLStorage(file_path, model_type=[])
+
+    # Read - this should trigger the phased reading logic
+    items = storage.read()
+
+    assert len(items) == 2
+
+    # Verify we got instances back, not just dicts
+    # Item 0: Person Data (now typed)
+    person_instance = items[0]
+    assert person_instance.engn_type == "Person"
+    assert person_instance.name == "Time Traveler"
+    assert person_instance.age == 42
+
+    # Item 1: Person Definition
+    person_typedef = items[1]
+    assert isinstance(person_typedef, TypeDef)
+    assert person_typedef.name == "Person"
