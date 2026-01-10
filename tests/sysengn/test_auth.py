@@ -15,7 +15,8 @@ def authenticator():
     # For this test, let's create a real hash using the authenticator's hasher first to be safe
     auth = Authenticator(config)
     real_hash = auth.hash_password("password123")
-    config.auth.password_hash = real_hash
+    if config.auth:
+        config.auth.password_hash = real_hash
     return Authenticator(config)
 
 
