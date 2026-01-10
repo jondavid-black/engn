@@ -28,4 +28,6 @@ def test_engn_no_args(capsys):
     with patch("sys.argv", ["engn"]):
         main()
         captured = capsys.readouterr()
-        assert "Hello from engn!" in captured.out
+        # Should print help message which includes usage
+        assert "usage: engn" in captured.out
+        assert "Available commands" in captured.out

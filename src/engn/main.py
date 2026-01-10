@@ -177,7 +177,8 @@ def main() -> None:
         run_check(target, working_dir)
         sys.exit(0)
 
-    print("Hello from engn!")
+    # No command provided
+    parser.print_help()
 
 
 if __name__ == "__main__":
