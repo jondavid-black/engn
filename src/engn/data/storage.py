@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Generic, Type, TypeVar, List, Union, Annotated
+from typing import Generic, Type, TypeVar, List, Union, Annotated, Sequence
 
 from pydantic import BaseModel, TypeAdapter, Field
 
@@ -20,7 +20,7 @@ class JSONLStorage(Generic[T]):
     def __init__(
         self,
         file_path: Path,
-        model_type: Type[T] | TypeAdapter[T] | List[Union[TypeDef, Enumeration]],
+        model_type: Type[T] | TypeAdapter[T] | Sequence[Union[TypeDef, Enumeration]],
     ):
         """
         Initialize the storage engine.

@@ -25,10 +25,10 @@ def test_gen_simple_model():
 
     # Test instantiation
     u = User(id=1, username="alice", engn_type="User")
-    assert u.id == 1
-    assert u.username == "alice"
-    assert u.email is None
-    assert u.engn_type == "User"
+    assert getattr(u, "id") == 1
+    assert getattr(u, "username") == "alice"
+    assert getattr(u, "email") is None
+    assert getattr(u, "engn_type") == "User"
 
     # Test validation error
     with pytest.raises(ValidationError):
@@ -45,8 +45,8 @@ def test_gen_enum():
     registry = gen_pydantic_models([role_enum])
     Role = registry["Role"]
 
-    assert Role.admin.value == "admin"
-    assert Role.editor.value == "editor"
+    assert getattr(Role, "admin").value == "admin"
+    assert getattr(Role, "editor").value == "editor"
 
 
 def test_gen_nested_models():
@@ -76,7 +76,7 @@ def test_gen_nested_models():
     addr = Address(street="123 Main St", city="Springfield", engn_type="Address")
     user = User(name="Bob", address=addr, engn_type="User")
 
-    assert user.address.city == "Springfield"
+    assert getattr(getattr(user, "address"), "city") == "Springfield"
 
 
 def test_gen_list_map_fields():
@@ -94,8 +94,8 @@ def test_gen_list_map_fields():
 
     g = Group(tags=["a", "b"], scores={"Alice": 10, "Bob": 20}, engn_type="Group")
 
-    assert g.tags == ["a", "b"]
-    assert g.scores["Alice"] == 10
+    assert getattr(g, "tags") == ["a", "b"]
+    assert getattr(g, "scores")["Alice"] == 10
 
 
 def test_circular_dependency_error():
