@@ -65,7 +65,7 @@ For full workflow details: `bd prime`
 ## Standard Process
 
 When asked to do work adhere to the following process:
-1. Write a feature or bug in bd (beads) that defines the work and expected outcome.
+1. Write a feature or bug in bd (beads) that defines the work and expected outcome.  Ensure to include detailed descriptions and expected outcomes in feature and task descriptions to avoid ambiguity and support human review.
 2. Decompose the feature or bug into tasks in bd (beads).  Ensure the last step checks all test and quality concerns by running 'uv run ruff check .', 'uv run ruff format .', 'uv run pytest', 'uv run pyright', and 'uv run behave' ensuring everything passes or fixing any reported errors.
 3. Execute the work based on the plan you've created in bd (beads).  Ensure any new code you write has corresponging unit tests.  In general, if adding a new feature also write a BDD acceptance test.
 4. Track your work in bd (beads) as you work.  When completing a feature, commit the changes and push changes in git.

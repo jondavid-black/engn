@@ -1,6 +1,5 @@
 from pydantic import TypeAdapter
 from typing import Union, Dict, Any
-import json
 from engn.data.models import TypeDef, Property, Enumeration, Schema
 from engn.data.storage import JSONLStorage, EngnDataModel
 
