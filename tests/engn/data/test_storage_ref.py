@@ -2,7 +2,7 @@ import pytest
 import tempfile
 from pathlib import Path
 from engn.data.storage import JSONLStorage
-from engn.data.models import TypeDef, Property, Enumeration
+from engn.data.models import TypeDef, Property
 
 
 def test_storage_ref_validation_success():

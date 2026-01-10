@@ -55,8 +55,8 @@ def test_property_type_validation_generics():
     assert p.type == "map[str, int]"
 
     # Ref
-    p = Property(name="test_ref", type="ref[SomeType]")
-    assert p.type == "ref[SomeType]"
+    p = Property(name="test_ref", type="ref[SomeType.some_prop]")
+    assert p.type == "ref[SomeType.some_prop]"
 
 
 def test_property_type_unknown_but_allowed():

@@ -80,7 +80,6 @@ def _resolve_type(
         # Note: We might want to wrap this type to include metadata about the reference
         # We can use Annotated for that.
 
-        from typing import Annotated
 
         # We need a way to mark this field as a reference for the storage layer validation
         # We can use a custom class or just a string marker in Annotated

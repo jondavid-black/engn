@@ -1,5 +1,5 @@
 from behave import given, when, then  # type: ignore
-from engn.data.models import TypeDef, Property, Enumeration
+from engn.data.models import TypeDef, Property
 from engn.data.storage import JSONLStorage, EngnDataModel
 import json
 
@@ -14,8 +14,17 @@ def step_save_definitions(context, filename):
     if hasattr(context, "defined_types"):
         definitions.extend(context.defined_types.values())
 
-    storage = JSONLStorage(file_path, EngnDataModel)
-    storage.write(definitions)
+    # Initialize storage with empty definitions for now, as we're just writing definitions
+    # storage = JSONLStorage(file_path, definitions)
+    # storage.write(definitions) - write expects items of type T, but we are passing definitions.
+    # JSONLStorage in dynamic mode (list of defs) expects to read/write instances of those types.
+    # But here we want to write the definitions themselves.
+    # So we should treat it as simple storage of TypeDef/Enumeration
+
+    # Correct approach:
+    # Use a storage dedicated to storing definitions
+    def_storage = JSONLStorage(file_path, EngnDataModel)
+    def_storage.write(definitions)
 
 
 @then('reading "{filename}" should return the types "{type1}" and "{type2}"')  # type: ignore
@@ -54,7 +63,7 @@ def step_save_user(context, type_name, id, name, filename):
     # Or use storage with dynamic models.
     # To use storage, we need to initialize it with definitions.
 
-    storage = JSONLStorage(file_path, context.schema_defs)
+    # storage = JSONLStorage(file_path, context.schema_defs)
 
     # We need to construct the item. Since we are in dynamic mode, we need the generated class.
     # storage._adapter handles serialization, but storage.write expects T.
