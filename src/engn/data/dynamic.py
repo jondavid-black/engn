@@ -80,7 +80,6 @@ def _resolve_type(
         # Note: We might want to wrap this type to include metadata about the reference
         # We can use Annotated for that.
 
-
         # We need a way to mark this field as a reference for the storage layer validation
         # We can use a custom class or just a string marker in Annotated
         # But for now, let's just return the raw type so Pydantic validation passes.

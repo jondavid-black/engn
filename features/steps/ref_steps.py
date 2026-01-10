@@ -23,15 +23,23 @@ def step_save_definitions(context, filename):
 
     # Correct approach:
     # Use a storage dedicated to storing definitions
-    def_storage = JSONLStorage(file_path, EngnDataModel)
+    # EngnDataModel is Annotated[Union[TypeDef, Enumeration], ...].
+    # TypeAdapter accepts Annotated unions.
+    # So passing TypeAdapter(EngnDataModel) is correct.
+    from pydantic import TypeAdapter
+
+    def_storage = JSONLStorage(file_path, TypeAdapter(EngnDataModel))
     def_storage.write(definitions)
 
 
 @then('reading "{filename}" should return the types "{type1}" and "{type2}"')  # type: ignore
 def step_read_types_verification(context, filename, type1, type2):
     file_path = context.test_dir / filename
-    storage = JSONLStorage(file_path, EngnDataModel)
+    from pydantic import TypeAdapter
+
+    storage = JSONLStorage(file_path, TypeAdapter(EngnDataModel))
     items = storage.read()
+
     names = {item.name for item in items if hasattr(item, "name")}
     assert type1 in names
     assert type2 in names
