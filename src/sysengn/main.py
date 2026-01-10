@@ -4,12 +4,29 @@ from pathlib import Path
 
 import flet as ft
 from engn.utils import get_version
+from engn.config import ProjectConfig
+from sysengn.auth import Authenticator
+from sysengn.views import LoginView
 
 
 def flet_main(page: ft.Page):
     page.title = "SysEngn"
     page.theme_mode = ft.ThemeMode.DARK
-    page.add(ft.Text("Welcome to SysEngn - Model-Based System Engineering"))
+
+    config = ProjectConfig.load(Path.cwd())
+    authenticator = Authenticator(config)
+
+    def on_login_success():
+        page.clean()
+        page.add(ft.Text("Welcome to SysEngn - Model-Based System Engineering"))
+        page.update()
+
+    # Check if auth is configured
+    if config.auth and config.auth.username and config.auth.password_hash:
+        page.add(LoginView(page, authenticator, on_login_success))
+    else:
+        # If no auth configured, go straight to main page
+        page.add(ft.Text("Welcome to SysEngn - Model-Based System Engineering"))
 
 
 def main() -> None:

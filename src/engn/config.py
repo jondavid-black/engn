@@ -12,10 +12,17 @@ except ImportError:
 
 
 @dataclass
+class AuthConfig:
+    username: str | None = None
+    password_hash: str | None = None
+
+
+@dataclass
 class ProjectConfig:
     pm_path: str = "pm"
     sysengn_path: str = "arch"
     ux_path: str = "ux"
+    auth: AuthConfig | None = None
 
     @classmethod
     def load(cls, project_root: Path) -> "ProjectConfig":
@@ -25,25 +32,28 @@ class ProjectConfig:
         """
         config_path = project_root / "engn.toml"
         if not config_path.exists():
-            return cls()
+            return cls(auth=AuthConfig())
 
         try:
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
 
             # Extract paths from config if they exist
-            # Assuming structure:
-            # [paths]
-            # pm = "..."
-            # sysengn = "..."
-            # ux = "..."
-
             paths: dict[str, Any] = data.get("paths", {})
+
+            # Extract auth from config
+            auth_data: dict[str, Any] = data.get("auth", {})
+            auth_config = AuthConfig(
+                username=auth_data.get("username"),
+                password_hash=auth_data.get("password_hash"),
+            )
+
             return cls(
                 pm_path=paths.get("pm", "pm"),
                 sysengn_path=paths.get("sysengn", "arch"),
                 ux_path=paths.get("ux", "ux"),
+                auth=auth_config,
             )
         except Exception:
             # Log warning? For now just return defaults on error
-            return cls()
+            return cls(auth=AuthConfig())
