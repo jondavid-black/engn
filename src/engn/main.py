@@ -1,5 +1,7 @@
 import argparse
 import sys
+import shutil
+import subprocess
 from pathlib import Path
 from engn.utils import get_version
 
@@ -19,6 +21,13 @@ def init_project(target_path: Path) -> None:
         f.write('arch_path = "arch"\n')
         f.write('pm_path = "pm"\n')
         f.write('ux_path = "ux"\n')
+
+    # Initialize beads if installed
+    if shutil.which("bd"):
+        subprocess.run(["bd", "init"], cwd=target_path, check=True)
+        print("Initialized beads for issue tracking")
+    else:
+        print("Warning: 'bd' (beads) not found. Issue tracking not initialized.")
 
     print(f"Initialized engn project in {target_path}")
 

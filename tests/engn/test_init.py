@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch
 from engn.main import main
+import shutil
 
 
 def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
@@ -8,9 +9,16 @@ def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
     with patch("sys.argv", ["engn", "init"]):
         # Mock Path.cwd to return the temporary directory
         with patch("pathlib.Path.cwd", return_value=tmp_path):
-            with pytest.raises(SystemExit) as e:
-                main()
-            assert e.value.code == 0
+            with patch("shutil.which", return_value="/usr/bin/bd"):
+                with patch("subprocess.run") as mock_run:
+                    with pytest.raises(SystemExit) as e:
+                        main()
+                    assert e.value.code == 0
+
+                    # Verify beads initialization
+                    mock_run.assert_called_with(
+                        ["bd", "init"], cwd=tmp_path, check=True
+                    )
 
     # Check if directories were created
     assert (tmp_path / "arch").is_dir()
