@@ -12,6 +12,11 @@ def before_scenario(context, scenario):
 
 
 def after_scenario(context, scenario):
+    # Ensure any patches are stopped
+    if hasattr(context, "patcher"):
+        context.patcher.stop()
+        delattr(context, "patcher")
+
     # Restore original directory and clean up
     os.chdir(context.original_cwd)
     shutil.rmtree(context.test_dir)

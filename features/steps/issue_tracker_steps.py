@@ -8,8 +8,10 @@ import json
 def step_tracker_init(context):
     context.tracker = IssueTracker()
     context.mock_bd_run = MagicMock()
-    # Patch subprocess.run on the instance or class to intercept calls
-    context.patcher = patch("subprocess.run", context.mock_bd_run)
+    # Patch subprocess.run specifically inside the IssueTracker module
+    # or ensure we stop the patcher correctly in all cases.
+    # The previous patch target was "subprocess.run" which is global!
+    context.patcher = patch("engn.issue_tracker.subprocess.run", context.mock_bd_run)
     context.patcher.start()
 
 
@@ -88,6 +90,20 @@ def step_verify_status(context, status):
     assert status in args
 
 
+@then("I should cleanup the mock")
+def step_cleanup(context):
+    if hasattr(context, "patcher"):
+        context.patcher.stop()
+        delattr(context, "patcher")
+
+
+# We use after_scenario hook in environment.py generally, but local here works too
+# if we ensure it runs.
+# However, behave hooks are usually in environment.py or steps files.
+# Let's ensure cleanup happens even if steps fail.
+
+
 def after_scenario(context, scenario):
     if hasattr(context, "patcher"):
         context.patcher.stop()
+        delattr(context, "patcher")

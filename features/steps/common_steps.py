@@ -45,5 +45,9 @@ def step_run_command(context, command):
 @then("the output should contain the version number")  # type: ignore
 def step_verify_output(context):
     expected_version = get_version()
+    if expected_version not in context.output:
+        print(
+            f"DEBUG: Expected version '{expected_version}' not found in output '{context.output}'"
+        )
     assert expected_version in context.output
     assert context.return_code == 0
