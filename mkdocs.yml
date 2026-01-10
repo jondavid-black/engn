@@ -1,0 +1,9 @@
+site_name: Engn Documentation
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - Engn: engn.md
+  - SysEngn: sysengn.md
+  - ProjEngn: projengn.md
