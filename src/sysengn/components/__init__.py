@@ -1,7 +1,6 @@
 """SysEngn UI components."""
 
 from sysengn.components.toolbar import Toolbar
-from sysengn.components.terminal_drawer import TerminalDrawer
 from sysengn.components.domain_views import (
     HomeView,
     MBSEView,
@@ -11,7 +10,6 @@ from sysengn.components.domain_views import (
 
 __all__ = [
     "Toolbar",
-    "TerminalDrawer",
     "HomeView",
     "MBSEView",
     "UXView",

@@ -9,7 +9,6 @@ from sysengn.auth import Authenticator
 from sysengn.views import LoginView
 from sysengn.components import (
     Toolbar,
-    TerminalDrawer,
     HomeView,
     MBSEView,
     UXView,
@@ -24,7 +23,6 @@ class MainApp:
         self.page = page
         self.config = config
         self.current_view_index = 0
-        self.username = config.auth.username if config.auth else "User"
 
         # Create domain views
         self.views = [
@@ -34,16 +32,10 @@ class MainApp:
             DocsView(),
         ]
 
-        # Create terminal drawer
-        self.terminal_drawer = TerminalDrawer(page)
-
         # Create toolbar
         self.toolbar = Toolbar(
             page=page,
             on_tab_change=self._on_tab_change,
-            on_terminal_toggle=self._on_terminal_toggle,
-            on_logout=self._on_logout,
-            username=self.username or "User",
         )
 
         # Content area for domain views
@@ -53,20 +45,11 @@ class MainApp:
         )
 
         # Main layout
-        self.main_row = ft.Row(
-            controls=[
-                self.content_area,
-                self.terminal_drawer,
-            ],
-            expand=True,
-            spacing=0,
-        )
-
         self.layout = ft.Column(
             controls=[
                 self.toolbar,
                 ft.Divider(height=1),
-                self.main_row,
+                self.content_area,
             ],
             spacing=0,
             expand=True,
@@ -76,30 +59,6 @@ class MainApp:
         """Handle tab navigation change."""
         self.current_view_index = index
         self.content_area.content = self.views[index]
-        self.page.update()
-
-    def _on_terminal_toggle(self) -> None:
-        """Handle terminal drawer toggle."""
-        self.terminal_drawer.toggle()
-        self.page.update()
-
-    def _on_logout(self) -> None:
-        """Handle logout action."""
-        self.page.clean()
-        authenticator = Authenticator(self.config)
-        self.page.add(
-            LoginView(
-                self.page,
-                authenticator,
-                lambda: self._show_main_app(),
-            )
-        )
-        self.page.update()
-
-    def _show_main_app(self) -> None:
-        """Show the main application after login."""
-        self.page.clean()
-        self.page.add(self.layout)
         self.page.update()
 
     def build(self) -> ft.Column:
