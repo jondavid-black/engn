@@ -43,10 +43,8 @@ class ProjectManager:
 
         git.Repo.clone_from(repo_url, target_dir)
 
-    def delete_project(self, project_name: str) -> None:
-        """
-        Delete a project from the working directory.
-        """
+    def _get_project_path(self, project_name: str) -> Path:
+        """Helper to get and validate project path."""
         if not self.working_directory.exists():
             raise FileNotFoundError(f"Project '{project_name}' not found")
 
@@ -55,8 +53,63 @@ class ProjectManager:
         if not project_path.exists():
             raise FileNotFoundError(f"Project '{project_name}' not found")
 
+        return project_path
+
+    def delete_project(self, project_name: str) -> None:
+        """
+        Delete a project from the working directory.
+        """
+        project_path = self._get_project_path(project_name)
+
         # Verify it's actually a directory before deleting
         if not project_path.is_dir():
             raise NotADirectoryError(f"'{project_name}' is not a directory")
 
         shutil.rmtree(project_path)
+
+    def list_branches(self, project_name: str) -> list[str]:
+        """List all branches in a project."""
+        project_path = self._get_project_path(project_name)
+        repo = git.Repo(project_path)
+        return [head.name for head in repo.heads]
+
+    def create_branch(self, project_name: str, branch_name: str) -> None:
+        """Create a new branch and checkout to it."""
+        project_path = self._get_project_path(project_name)
+        repo = git.Repo(project_path)
+        new_branch = repo.create_head(branch_name)
+        new_branch.checkout()
+
+    def checkout_branch(self, project_name: str, branch_name: str) -> None:
+        """Checkout an existing branch."""
+        project_path = self._get_project_path(project_name)
+        repo = git.Repo(project_path)
+
+        if branch_name not in repo.heads:
+            raise ValueError(f"Branch '{branch_name}' not found")
+
+        repo.heads[branch_name].checkout()
+
+    def delete_branch(self, project_name: str, branch_name: str) -> None:
+        """Delete a branch."""
+        project_path = self._get_project_path(project_name)
+        repo = git.Repo(project_path)
+
+        if branch_name not in repo.heads:
+            raise ValueError(f"Branch '{branch_name}' not found")
+
+        if repo.active_branch.name == branch_name:
+            raise ValueError(f"Cannot delete active branch '{branch_name}'")
+
+        repo.delete_head(branch_name)
+
+    def merge_branch(self, project_name: str, branch_name: str) -> None:
+        """Merge a branch into the current active branch."""
+        project_path = self._get_project_path(project_name)
+        repo = git.Repo(project_path)
+
+        if branch_name not in repo.heads:
+            raise ValueError(f"Branch '{branch_name}' not found")
+
+        # This is a simplified merge that assumes no conflicts for now
+        repo.git.merge(branch_name)
