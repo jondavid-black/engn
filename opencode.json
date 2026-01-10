@@ -1,5 +1,26 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": ["opencode-beads"],
-  "instructions": ["AGENTS.md"]
+  "instructions": ["AGENTS.md"],
+  "lsp": {
+    "basedpyright": {
+      "enabled": true,
+      "command": [
+        "uvx", 
+        "basedpyright-langserver", 
+        "--stdio"
+      ],
+      "extensions": [".py", ".pyi"]
+    },
+    "ruff": {
+      "enabled": true,
+      "command": [
+        "uvx", 
+        "ruff", 
+        "server", 
+        "--stdio"
+      ],
+      "extensions": [".py"]
+    }
+  }
 }

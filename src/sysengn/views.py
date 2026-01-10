@@ -12,7 +12,7 @@ class LoginView(ft.Container):
         self.password_field = ft.TextField(
             label="Password", password=True, can_reveal_password=True, width=300
         )
-        self.error_text = ft.Text(color=ft.colors.RED)
+        self.error_text = ft.Text(color=ft.Colors.RED)
 
         self.content = ft.Column(
             controls=[
@@ -26,7 +26,7 @@ class LoginView(ft.Container):
                     "Login with GitHub",
                     on_click=self.login_with_github,
                     width=300,
-                    icon=ft.icons.LOGIN,
+                    icon=ft.Icons.LOGIN,
                 ),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
@@ -51,7 +51,7 @@ class LoginView(ft.Container):
             self.error_text.value = "Invalid credentials"
             self.update()
 
-    def login_with_github(self, e):
+    async def login_with_github(self, e):
         # Placeholder for GitHub OAuth2 logic
         # In a real implementation, this would trigger the OAuth flow
         # Flet 0.26+ uses page.login, checking if it is available
@@ -61,7 +61,7 @@ class LoginView(ft.Container):
             # ft.auth is available at runtime as verified.
             from flet.auth import OAuthProvider
 
-            self.page_ref.login(
+            await self.page_ref.login(
                 OAuthProvider(
                     client_id="github_client_id",
                     client_secret="github_client_secret",

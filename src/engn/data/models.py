@@ -185,6 +185,9 @@ class TypeDef(BaseDataModel):
 
     engn_type: Literal["type_def"] = "type_def"
     name: str = Field(description="Unique name of the data type")
+    extends: str | None = Field(
+        default=None, description="Name of the parent type to extend"
+    )
     description: str | None = Field(
         default=None, description="Description of what this type represents"
     )
