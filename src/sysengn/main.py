@@ -19,6 +19,12 @@ def main() -> None:
     parser.add_argument(
         "--version", action="store_true", help="Show the version and exit"
     )
+    parser.add_argument(
+        "-w",
+        "--working-directory",
+        default=".",
+        help="The working directory for projects (default: current directory)",
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Serve command

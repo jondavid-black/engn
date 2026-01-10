@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 from engn.utils import get_asset_path
 

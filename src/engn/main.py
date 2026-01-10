@@ -10,6 +10,12 @@ def main() -> None:
     parser.add_argument(
         "--version", action="store_true", help="Show the version and exit"
     )
+    parser.add_argument(
+        "-w",
+        "--working-directory",
+        default=".",
+        help="The working directory for projects (default: current directory)",
+    )
 
     args = parser.parse_args()
 
