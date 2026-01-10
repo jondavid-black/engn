@@ -85,7 +85,45 @@ def create_quantity_type(name: str, target_physical_type: str):
             except Exception as e:
                 # Wrap any astropy parsing error or our custom mismatch error
                 raise ValueError(f"Invalid quantity for type '{name}': {e}") from e
-            return v
+            return cls(v)
+
+        def _as_quantity(self, other: Any) -> u.Quantity:
+            if isinstance(other, u.Quantity):
+                return other
+            try:
+                return u.Quantity(other)
+            except Exception:
+                return NotImplemented
+
+        def __lt__(self, other: Any) -> bool:
+            q_other = self._as_quantity(other)
+            if q_other is NotImplemented:
+                return NotImplemented
+            return bool(u.Quantity(self) < q_other)
+
+        def __le__(self, other: Any) -> bool:
+            q_other = self._as_quantity(other)
+            if q_other is NotImplemented:
+                return NotImplemented
+            return bool(u.Quantity(self) <= q_other)
+
+        def __gt__(self, other: Any) -> bool:
+            q_other = self._as_quantity(other)
+            if q_other is NotImplemented:
+                return NotImplemented
+            return bool(u.Quantity(self) > q_other)
+
+        def __ge__(self, other: Any) -> bool:
+            q_other = self._as_quantity(other)
+            if q_other is NotImplemented:
+                return NotImplemented
+            return bool(u.Quantity(self) >= q_other)
+
+        def __eq__(self, other: Any) -> bool:
+            q_other = self._as_quantity(other)
+            if q_other is NotImplemented:
+                return super().__eq__(other)
+            return bool(u.Quantity(self) == q_other)
 
     QuantityType.__name__ = name
     return QuantityType
