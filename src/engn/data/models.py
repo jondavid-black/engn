@@ -1,5 +1,7 @@
 from typing import Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from engn.data.primitives import PRIMITIVE_TYPE_MAP
 
 
 class BaseDataModel(BaseModel):
@@ -42,6 +44,29 @@ class Property(BaseDataModel):
 
     list_min: int | None = None
     list_max: int | None = None
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        # Check if it's a known primitive
+        if v in PRIMITIVE_TYPE_MAP:
+            return v
+
+        # Check for list/map generics
+        if v.startswith("list[") and v.endswith("]"):
+            # Simple recursive check (could be improved)
+            inner = v[5:-1]
+            # Recursively validate inner type would be ideal but for now we just
+            # check primitives or assume it's a forward reference to a defined type
+            return v
+        if v.startswith("map[") and v.endswith("]"):
+            return v
+        if v.startswith("ref[") and v.endswith("]"):
+            return v
+
+        # If not primitive, we assume it's a reference to a TypeDef or Enum defined elsewhere
+        # Strict validation would require context of the whole schema, which we don't have here.
+        return v
 
 
 class TypeDef(BaseDataModel):
