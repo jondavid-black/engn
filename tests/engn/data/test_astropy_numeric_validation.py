@@ -1,9 +1,14 @@
 import pytest
 from pydantic import BaseModel, Field, ValidationError
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
 from engn.data.primitives import PRIMITIVE_TYPE_MAP
 
-Length = PRIMITIVE_TYPE_MAP["length"]
+if TYPE_CHECKING:
+    Length = str
+    Time = str
+else:
+    Length = PRIMITIVE_TYPE_MAP["length"]
+    Time = PRIMITIVE_TYPE_MAP["time"]
 
 
 def test_numeric_validation_gt():
@@ -46,8 +51,6 @@ def test_numeric_validation_le():
 
     class MyModel(BaseModel):
         len: Annotated[Length, Field(le="10 s")]
-
-    Time = PRIMITIVE_TYPE_MAP["time"]
 
     class TimeModel(BaseModel):
         t: Annotated[Time, Field(le="10 s")]
