@@ -44,9 +44,9 @@ class JSONLStorage(Generic[T]):
 
         with open(self.file_path, mode, encoding="utf-8") as f:
             for item in items:
-                # model_dump_json() produces a JSON string
-                json_line = item.model_dump_json()
-                f.write(json_line + "\n")
+                # Use the adapter to serialize to JSON bytes, then decode to string
+                json_bytes = self._adapter.dump_json(item)
+                f.write(json_bytes.decode("utf-8") + "\n")
 
     def read(self) -> List[T]:
         """
