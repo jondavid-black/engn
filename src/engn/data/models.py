@@ -157,6 +157,20 @@ class Property(BaseDataModel):
 
             return v
         if v.startswith("ref[") and v.endswith("]"):
+            inner = v[4:-1]
+            if "." not in inner:
+                raise ValueError(
+                    f"Invalid ref definition '{v}': Must be in format ref[Type.Property]"
+                )
+            parts = inner.split(".")
+            if len(parts) != 2:
+                raise ValueError(
+                    f"Invalid ref definition '{v}': Must be in format ref[Type.Property]"
+                )
+            if not parts[0] or not parts[1]:
+                raise ValueError(
+                    f"Invalid ref definition '{v}': Type and Property names cannot be empty"
+                )
             return v
 
         # If not primitive, we assume it's a reference to a TypeDef or Enum defined elsewhere

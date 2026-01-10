@@ -53,10 +53,47 @@ def _resolve_type(
 
         return Dict[key_type, val_type]  # type: ignore
 
-    # Handle ref[T] - treat as just T
+    # Handle ref[T] - look up Type.Prop
     if type_name.startswith("ref[") and type_name.endswith("]"):
         target = type_name[4:-1]
-        return _resolve_type(target, registry, primitive_map)
+        parts = target.split(".")
+        if len(parts) != 2:
+            return None  # Should have been caught by model validation, but failsafe
+
+        target_type_name, target_prop_name = parts
+
+        # Check registry for the target type
+        target_model = registry.get(target_type_name)
+        if target_model is None:
+            return None  # Type not defined yet
+
+        # Check if the property exists on the target model
+        # The target model is a Pydantic model
+        if target_prop_name not in target_model.model_fields:
+            raise ValueError(
+                f"Property '{target_prop_name}' not found in type '{target_type_name}'"
+            )
+
+        target_field = target_model.model_fields[target_prop_name]
+
+        # Return the type of that field
+        # Note: We might want to wrap this type to include metadata about the reference
+        # We can use Annotated for that.
+
+        from typing import Annotated
+
+        # We need a way to mark this field as a reference for the storage layer validation
+        # We can use a custom class or just a string marker in Annotated
+        # But for now, let's just return the raw type so Pydantic validation passes.
+        # The prompt says: "defer validation to a later phase... in the storage.read function"
+        # So we just need the type to match.
+
+        # However, we probably want to attach metadata to the field on the *referencing* model
+        # so storage knows to check it.
+        # The calling code (gen_pydantic_models) handles creating the field.
+        # Here we return the Python type.
+
+        return target_field.annotation
 
     # Check primitives
     if type_name in primitive_map:
@@ -113,6 +150,14 @@ def gen_pydantic_models(
 
                 # Handle optional/required and defaults
                 field_args = {}
+
+                # Check for ref metadata and add it to json_schema_extra
+                if prop.type.startswith("ref["):
+                    # Extract target
+                    target = prop.type[4:-1]
+                    if "json_schema_extra" not in field_args:
+                        field_args["json_schema_extra"] = {}
+                    field_args["json_schema_extra"]["reference_target"] = target
 
                 if prop.description:
                     field_args["description"] = prop.description

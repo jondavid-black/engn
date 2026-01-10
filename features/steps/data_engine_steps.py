@@ -21,6 +21,9 @@ def step_define_type(context, type_name):
             )
         )
     context.defined_type = TypeDef(name=type_name, properties=properties)
+    if not hasattr(context, "defined_types"):
+        context.defined_types = {}
+    context.defined_types[type_name] = context.defined_type
 
 
 @when('I save the "{type_name}" type definition to "{filename}"')  # type: ignore

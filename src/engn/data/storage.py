@@ -213,7 +213,99 @@ class JSONLStorage(Generic[T]):
                 item = self._adapter.validate_json(line)
                 final_items.append(item)
 
+        # 4. Third pass: Validate references
+        self._validate_references(final_items)
+
         return final_items
+
+    def _validate_references(self, items: List[T]) -> None:
+        """
+        Validate referential integrity of the loaded items.
+        """
+        if not items:
+            return
+
+        # 1. Identify which fields are references and build needed targets
+        needed_targets = set()
+        fields_with_refs = {}  # Map model name -> list of (field_name, target_ref)
+
+        # Inspect all unique model types in the list
+        # Note: items might contain TypeDefs/Enumerations too. We skip those or handle them?
+        # References usually come from data models pointing to data models.
+        # TypeDefs don't have references (except in type definition strings, which are validated elsewhere).
+
+        # We need to look at the classes of the items.
+        # Or better, we can iterate over the generated models if we have access to them.
+        # But `items` contains instances.
+
+        seen_classes = set()
+        for item in items:
+            cls = item.__class__
+            if cls in seen_classes:
+                continue
+            seen_classes.add(cls)
+
+            # Check if it has fields (Pydantic model)
+            if not hasattr(cls, "model_fields"):
+                continue
+
+            for name, field_info in cls.model_fields.items():
+                if field_info.json_schema_extra and isinstance(
+                    field_info.json_schema_extra, dict
+                ):
+                    target = field_info.json_schema_extra.get("reference_target")
+                    if target:
+                        needed_targets.add(target)
+                        fields_with_refs.setdefault(cls.__name__, []).append(
+                            (name, target)
+                        )
+
+        if not needed_targets:
+            return
+
+        # 2. Build index of available values for needed targets
+        # Structure: {"Type.Prop": {value1, value2, ...}}
+        index = {t: set() for t in needed_targets}
+
+        for item in items:
+            model_name = item.__class__.__name__
+            # Check if this item contributes to any target
+            # Optimization: pre-calculate which fields of this model are needed
+            # But iterating all needed_targets is okay if not too many.
+
+            # Better: Map "Type" -> list of properties we need to index
+            # But we have "Type.Prop" keys.
+
+            # Let's iterate over needed_targets and check if this item matches the Type
+            for target in needed_targets:
+                target_type, target_prop = target.split(".")
+                if model_name == target_type:
+                    # This item is of the target type, index the property value
+                    if hasattr(item, target_prop):
+                        val = getattr(item, target_prop)
+                        if val is not None:
+                            index[target].add(val)
+
+        # 3. Validate references
+        for item in items:
+            model_name = item.__class__.__name__
+            if model_name in fields_with_refs:
+                for field_name, target in fields_with_refs[model_name]:
+                    val = getattr(item, field_name)
+                    # If value is None/Optional and not set, skip?
+                    # If field is required, Pydantic ensures it's not None (unless default).
+                    # If field is Optional, it might be None.
+                    if val is None:
+                        continue
+
+                    # Also skip if value is empty list (if we support list of refs)?
+                    # Current implementation supports scalar ref.
+
+                    if val not in index.get(target, set()):
+                        raise ValueError(
+                            f"Reference error in {model_name}.{field_name}: "
+                            f"Value '{val}' not found in target '{target}'"
+                        )
 
     def append(self, item: T) -> None:
         """
