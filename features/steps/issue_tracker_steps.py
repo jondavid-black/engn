@@ -1,10 +1,10 @@
-from behave import given, when, then
+from behave import given, when, then  # type: ignore
 from engn.issue_tracker import IssueTracker
 from unittest.mock import MagicMock, patch
 import json
 
 
-@given("the beads issue tracker is initialized")
+@given("the beads issue tracker is initialized")  # type: ignore
 def step_tracker_init(context):
     context.tracker = IssueTracker()
     context.mock_bd_run = MagicMock()
@@ -15,7 +15,7 @@ def step_tracker_init(context):
     context.patcher.start()
 
 
-@when('I create a new task with title "{title}"')
+@when('I create a new task with title "{title}"')  # type: ignore
 def step_create_task(context, title):
     # Mock the return value for create
     context.mock_bd_run.return_value = MagicMock(
@@ -25,7 +25,7 @@ def step_create_task(context, title):
     context.last_issue = context.tracker.create_issue(title)
 
 
-@when("I list open issues")
+@when("I list open issues")  # type: ignore
 def step_list_issues(context):
     # Mock list return. If we just created one, return that in a list
     context.mock_bd_run.return_value = MagicMock(
@@ -34,13 +34,13 @@ def step_list_issues(context):
     context.issues = context.tracker.list_issues()
 
 
-@then('I should see an issue with title "{title}" in the list')
+@then('I should see an issue with title "{title}" in the list')  # type: ignore
 def step_verify_issue_in_list(context, title):
     found = any(issue["title"] == title for issue in context.issues)
     assert found, f"Issue with title '{title}' not found in {context.issues}"
 
 
-@given('a task exists with title "{title}"')
+@given('a task exists with title "{title}"')  # type: ignore
 def step_task_exists(context, title):
     context.existing_task_id = "bd-101"
     context.existing_task_title = title
@@ -48,7 +48,7 @@ def step_task_exists(context, title):
     # but we prepare mocks for subsequent calls
 
 
-@when('I add a comment "{comment}" to the task')
+@when('I add a comment "{comment}" to the task')  # type: ignore
 def step_add_comment(context, comment):
     context.mock_bd_run.return_value = MagicMock(
         stdout=json.dumps({"id": context.existing_task_id, "comment": comment}),
@@ -59,7 +59,7 @@ def step_add_comment(context, comment):
     )
 
 
-@then('the task should have a comment "{comment}"')
+@then('the task should have a comment "{comment}"')  # type: ignore
 def step_verify_comment(context, comment):
     # In a real integration test we'd query comments.
     # Here we verify the mock was called correctly and result matches
@@ -70,7 +70,7 @@ def step_verify_comment(context, comment):
     assert comment in args
 
 
-@when('I update the task status to "{status}"')
+@when('I update the task status to "{status}"')  # type: ignore
 def step_update_status(context, status):
     context.mock_bd_run.return_value = MagicMock(
         stdout=json.dumps({"id": context.existing_task_id, "status": status}),
@@ -81,7 +81,7 @@ def step_update_status(context, status):
     )
 
 
-@then('the task status should be "{status}"')
+@then('the task status should be "{status}"')  # type: ignore
 def step_verify_status(context, status):
     assert context.update_result["status"] == status
     args = context.mock_bd_run.call_args[0][0]
@@ -90,7 +90,7 @@ def step_verify_status(context, status):
     assert status in args
 
 
-@then("I should cleanup the mock")
+@then("I should cleanup the mock")  # type: ignore
 def step_cleanup(context):
     if hasattr(context, "patcher"):
         context.patcher.stop()
