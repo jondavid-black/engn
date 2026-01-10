@@ -5,12 +5,14 @@ from engn.utils import get_version
 
 
 def test_get_version_fallback():
-    # Test that get_version can read from pyproject.toml
+    # Test that get_version returns the unknown message when package is not found
     # We mock version to raise PackageNotFoundError to trigger the fallback
     with patch("engn.utils.version") as mock_version:
-        mock_version.side_effect = ImportError("Package not found")
-        # Just ensure it returns a string, exact value depends on file content
-        assert isinstance(get_version(), str)
+        from importlib.metadata import PackageNotFoundError
+
+        mock_version.side_effect = PackageNotFoundError("Package not found")
+        # Just ensure it returns the specific string for unknown version
+        assert get_version() == "Unknown (package not installed)"
 
 
 def test_engn_version_flag(capsys):

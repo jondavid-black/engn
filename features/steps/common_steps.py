@@ -1,7 +1,15 @@
 from behave import given, when, then
 import subprocess
 import sys
-from engn.utils import get_version
+from pathlib import Path
+
+# Add src to sys.path to allow imports
+project_root = Path(__file__).resolve().parents[2]
+src_path = project_root / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+from engn.utils import get_version  # noqa: E402
 
 
 @given("the {app_name} application is installed")  # type: ignore
