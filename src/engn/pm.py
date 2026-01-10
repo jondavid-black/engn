@@ -1,6 +1,7 @@
 import shutil
-import subprocess
 from pathlib import Path
+
+import git
 
 
 class ProjectManager:
@@ -40,12 +41,7 @@ class ProjectManager:
         if target_dir.exists():
             raise FileExistsError(f"Project '{name}' already exists")
 
-        subprocess.run(
-            ["git", "clone", repo_url, str(target_dir)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        git.Repo.clone_from(repo_url, target_dir)
 
     def delete_project(self, project_name: str) -> None:
         """

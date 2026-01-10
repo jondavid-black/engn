@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "flet[all]>=0.80.1",
+    "gitpython>=3.1.46",
 ]
 
 [project.scripts]
