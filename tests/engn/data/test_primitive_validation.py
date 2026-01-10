@@ -154,7 +154,6 @@ def test_datetime_validation():
 
 def test_path_validation(tmp_path):
     """Test filesystem path validation constraints."""
-    import pathlib
 
     # Create some dummy files
     f = tmp_path / "test.txt"

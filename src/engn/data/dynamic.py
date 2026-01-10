@@ -191,7 +191,6 @@ def gen_pydantic_models(
                 if prop.before is not None or prop.after is not None:
                     from typing import Annotated
                     from pydantic import AfterValidator
-                    import datetime
 
                     dt_validators = []
 
