@@ -1,7 +1,12 @@
 from pathlib import Path
-from typing import Generic, Type, TypeVar, List
+from typing import Generic, Type, TypeVar, List, Union, Annotated
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, TypeAdapter, Field
+
+from engn.data.models import TypeDef, Enumeration
+
+# Define the discriminated union of supported types
+EngnDataModel = Annotated[Union[TypeDef, Enumeration], Field(discriminator="engn_type")]
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -11,17 +16,20 @@ class JSONLStorage(Generic[T]):
     Generic storage engine for reading and writing Pydantic models to JSONL files.
     """
 
-    def __init__(self, file_path: Path, model_class: Type[T]):
+    def __init__(self, file_path: Path, model_type: Type[T] | TypeAdapter[T]):
         """
         Initialize the storage engine.
 
         Args:
             file_path: Absolute path to the JSONL file.
-            model_class: The Pydantic model class to serialize/deserialize.
+            model_type: The Pydantic model class or TypeAdapter to use.
+                        If creating for polymorphic types, pass TypeAdapter(EngnDataModel).
         """
         self.file_path = file_path
-        self.model_class = model_class
-        self._adapter = TypeAdapter(model_class)
+        if isinstance(model_type, TypeAdapter):
+            self._adapter = model_type
+        else:
+            self._adapter = TypeAdapter(model_type)
 
     def write(self, items: List[T], mode: str = "w") -> None:
         """

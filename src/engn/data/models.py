@@ -13,6 +13,7 @@ class Enumeration(BaseDataModel):
     Defines an enumerated type with a fixed set of values.
     """
 
+    engn_type: Literal["enum"] = "enum"
     name: str = Field(description="Unique name of the enumeration")
     description: str | None = Field(
         default=None, description="Description of what this enum represents"
@@ -39,7 +40,6 @@ class Property(BaseDataModel):
         default=None, description="Default value if not provided"
     )
 
-    # Constraints can be added here as needed, mirroring the YASL example but kept simple for now
     list_min: int | None = None
     list_max: int | None = None
 
@@ -49,6 +49,7 @@ class TypeDef(BaseDataModel):
     Defines a complex data type consisting of multiple properties.
     """
 
+    engn_type: Literal["type_def"] = "type_def"
     name: str = Field(description="Unique name of the data type")
     description: str | None = Field(
         default=None, description="Description of what this type represents"
@@ -63,6 +64,9 @@ class Schema(BaseDataModel):
     Container for defining data types and enumerations.
     """
 
+    # Schema doesn't need a discriminator if it's not stored in the mixed list,
+    # but for consistency we can add it or leave it.
+    # Usually Schema is a container, not an item in the stream.
     types: list[TypeDef] = Field(
         default_factory=list, description="Collection of data type definitions"
     )
