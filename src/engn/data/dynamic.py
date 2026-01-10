@@ -132,6 +132,29 @@ def gen_pydantic_models(
                 if prop.list_max is not None:
                     field_args["max_length"] = prop.list_max
 
+                # numeric constraints
+                if prop.gt is not None:
+                    field_args["gt"] = prop.gt
+                if prop.ge is not None:
+                    field_args["ge"] = prop.ge
+                if prop.lt is not None:
+                    field_args["lt"] = prop.lt
+                if prop.le is not None:
+                    field_args["le"] = prop.le
+                if prop.multiple_of is not None:
+                    field_args["multiple_of"] = prop.multiple_of
+
+                # string constraints
+                if prop.str_min is not None:
+                    field_args["min_length"] = prop.str_min
+                if prop.str_max is not None:
+                    field_args["max_length"] = prop.str_max
+                if prop.str_regex is not None:
+                    field_args["pattern"] = prop.str_regex
+
+                # Other custom validation logic will be handled below if needed,
+                # but Pydantic's Field handles most standard constraints.
+
                 field_definitions[prop.name] = (py_type, Field(**field_args))
 
             if ready:

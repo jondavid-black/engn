@@ -1,4 +1,5 @@
 from typing import Any, Literal
+import datetime
 from pydantic import BaseModel, Field, field_validator
 
 from engn.data.primitives import PRIMITIVE_TYPE_MAP
@@ -42,8 +43,72 @@ class Property(BaseDataModel):
         default=None, description="Default value if not provided"
     )
 
-    list_min: int | None = None
-    list_max: int | None = None
+    unique: bool | None = Field(
+        default=False, description="Whether the value must be unique"
+    )
+
+    # list constraints
+    list_min: int | None = Field(
+        default=None, description="Minimum number of items in list"
+    )
+    list_max: int | None = Field(
+        default=None, description="Maximum number of items in list"
+    )
+
+    # numeric constraints
+    gt: float | int | None = Field(default=None, description="Greater than")
+    ge: float | int | None = Field(default=None, description="Greater than or equal to")
+    lt: float | int | None = Field(default=None, description="Less than")
+    le: float | int | None = Field(default=None, description="Less than or equal to")
+    exclude: list[float | int] | None = Field(
+        default=None, description="Excluded values"
+    )
+    multiple_of: float | int | None = Field(
+        default=None, description="Value must be a multiple of this"
+    )
+    whole_number: bool | None = Field(
+        default=False, description="Must be a whole number"
+    )
+
+    # string constraints
+    str_min: int | None = Field(default=None, description="Minimum string length")
+    str_max: int | None = Field(default=None, description="Maximum string length")
+    str_regex: str | None = Field(default=None, description="Regex pattern")
+
+    # date / time constraints
+    before: datetime.date | datetime.datetime | datetime.time | None = Field(
+        default=None, description="Must be before this time/date"
+    )
+    after: datetime.date | datetime.datetime | datetime.time | None = Field(
+        default=None, description="Must be after this time/date"
+    )
+
+    # path constraints
+    path_exists: bool | None = Field(default=None, description="Path must exist")
+    is_dir: bool | None = Field(default=None, description="Path must be a directory")
+    is_file: bool | None = Field(default=None, description="Path must be a file")
+    file_ext: list[str] | None = Field(
+        default=None, description="Allowed file extensions"
+    )
+
+    # url constraints
+    url_base: str | None = Field(default=None, description="Base URL required")
+    url_protocols: list[str] | None = Field(
+        default=None, description="Allowed URL protocols"
+    )
+    url_reachable: bool | None = Field(
+        default=False, description="URL must be reachable"
+    )
+
+    # any constraints
+    any_of: list[str] | None = Field(
+        default=None, description="Must be one of these types"
+    )
+
+    # ref constraints
+    no_ref_check: bool | None = Field(
+        default=None, description="Skip reference checking"
+    )
 
     @field_validator("type")
     @classmethod
