@@ -167,7 +167,7 @@ class Toolbar(ft.Container):
             leading_icon=ft.Icons.FOLDER_OPEN,
             tooltip="Select Active Project",
         )
-        project_dropdown.on_change = on_project_change
+        project_dropdown.on_select = on_project_change
         return project_dropdown
 
     def _build_branch_dropdown(self) -> ft.Dropdown:
@@ -218,7 +218,7 @@ class Toolbar(ft.Container):
             leading_icon=ft.Icons.ACCOUNT_TREE_OUTLINED,
             tooltip="Select Branch",
         )
-        branch_dropdown.on_change = on_branch_change
+        branch_dropdown.on_select = on_branch_change
         return branch_dropdown
 
     def refresh_branches(self):

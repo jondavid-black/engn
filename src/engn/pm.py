@@ -1,7 +1,5 @@
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
 
 import git
 from git import exc

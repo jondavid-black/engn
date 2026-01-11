@@ -1,7 +1,3 @@
-import os
-import shutil
-import subprocess
-from pathlib import Path
 import pytest
 from engn.project import (
     create_new_project,
