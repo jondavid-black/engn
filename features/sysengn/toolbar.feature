@@ -3,6 +3,7 @@ Feature: SysEngn Toolbar
   I want to see a toolbar with a logo and navigation tabs
   So that I can navigate between different work domains
 
+  # Component-level tests (fast, no browser needed)
   Scenario: Toolbar displays application logo
     Given the SysEngn toolbar component is initialized
     Then the toolbar should contain a logo image
@@ -22,3 +23,17 @@ Feature: SysEngn Toolbar
     Given the SysEngn toolbar component is initialized
     Then the navigation tabs should be a standalone flet control
     And the navigation tabs should not require a parent container
+
+  # UI tests (requires browser via playwright)
+  @ui
+  Scenario: Toolbar renders in browser without errors
+    Given the SysEngn app is running in the browser
+    Then no error messages should be displayed
+    And the logo should be visible in the browser
+    And all navigation tabs should be visible
+
+  @ui
+  Scenario: Tab navigation works in browser
+    Given the SysEngn app is running in the browser
+    When I click on the "MBSE" tab
+    Then the MBSE view content should be displayed

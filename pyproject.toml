@@ -29,6 +29,7 @@ dev = [
     "pyright>=1.1.408",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
+    "pytest-playwright>=0.7.2",
     "ruff>=0.14.11",
 ]
 
@@ -36,6 +37,9 @@ dev = [
 addopts = "--cov=src --cov-report=term-missing"
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "ui: marks tests as UI tests requiring playwright (deselect with '-m \"not ui\"')",
+]
 
 [tool.coverage.run]
 source = ["src"]
