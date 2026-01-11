@@ -64,19 +64,37 @@ def step_logo_uses_asset(context):
 @then("the toolbar should have {count:d} navigation tabs")  # type: ignore
 def step_toolbar_has_tabs(context, count):
     """Verify toolbar has the expected number of tabs."""
-    tabs = context.toolbar.tabs
-    assert tabs is not None, "Toolbar should have tabs attribute"
-    assert hasattr(tabs, "tabs"), "Tabs component should have tabs list"
-    assert len(tabs.tabs) == count, f"Expected {count} tabs, got {len(tabs.tabs)}"
+    tabs_component = context.toolbar.tabs
+    assert tabs_component is not None, "Toolbar should have tabs attribute"
+
+    # SegmentedButton uses segments, TabBar uses tabs
+    if hasattr(tabs_component, "segments"):
+        actual_count = len(tabs_component.segments)
+    elif hasattr(tabs_component, "tabs"):
+        actual_count = len(tabs_component.tabs)
+    else:
+        raise AssertionError(
+            f"Tabs component {type(tabs_component).__name__} has no segments or tabs"
+        )
+
+    assert actual_count == count, f"Expected {count} tabs, got {actual_count}"
 
 
 @then('the tabs should be labeled "{labels}"')  # type: ignore
 def step_tabs_have_labels(context, labels):
     """Verify tabs have the expected labels."""
     expected_labels = [label.strip() for label in labels.split(",")]
-    tab_bar = context.toolbar.tabs
+    tabs_component = context.toolbar.tabs
 
-    actual_labels = [tab.label for tab in tab_bar.tabs]
+    # SegmentedButton: segments have value attribute
+    # TabBar: tabs have label attribute
+    if hasattr(tabs_component, "segments"):
+        actual_labels = [seg.value for seg in tabs_component.segments]
+    elif hasattr(tabs_component, "tabs"):
+        actual_labels = [tab.label for tab in tabs_component.tabs]
+    else:
+        actual_labels = []
+
     assert actual_labels == expected_labels, (
         f"Expected tabs {expected_labels}, got {actual_labels}"
     )
@@ -85,10 +103,18 @@ def step_tabs_have_labels(context, labels):
 @when("I simulate selecting tab index {index:d}")  # type: ignore
 def step_select_tab(context, index):
     """Simulate a tab selection event."""
-    # Create a mock event with the selected index
+    tabs_component = context.toolbar.tabs
+    tab_labels = context.toolbar.tab_labels
+
+    # Create a mock event
     mock_event = MagicMock()
-    mock_event.control = context.toolbar.tabs
-    mock_event.control.selected_index = index
+    mock_event.control = tabs_component
+
+    # For SegmentedButton, selected is a list of values
+    if hasattr(tabs_component, "segments"):
+        mock_event.control.selected = [tab_labels[index]]
+    else:
+        mock_event.control.selected_index = index
 
     # Trigger the handler
     context.toolbar._handle_tab_change(mock_event)
@@ -101,3 +127,33 @@ def step_callback_invoked(context, index):
     assert context.tab_change_index == index, (
         f"Expected callback index {index}, got {context.tab_change_index}"
     )
+
+
+# Controls that require a parent container to function
+CONTROLS_REQUIRING_PARENT = (ft.TabBar, ft.Tab)
+
+
+@then("the navigation tabs should be a standalone flet control")  # type: ignore
+def step_tabs_standalone(context):
+    """Verify navigation tabs use a standalone control, not one requiring a parent."""
+    tabs_component = context.toolbar.tabs
+    tabs_type = type(tabs_component)
+
+    # TabBar requires a Tabs parent - it's not standalone
+    assert not isinstance(tabs_component, CONTROLS_REQUIRING_PARENT), (
+        f"Navigation tabs use {tabs_type.__name__} which requires a parent container. "
+        f"Use a standalone control like SegmentedButton instead."
+    )
+
+
+@then("the navigation tabs should not require a parent container")  # type: ignore
+def step_tabs_no_parent_required(context):
+    """Verify the tabs component can render without a special parent."""
+    tabs_component = context.toolbar.tabs
+
+    # Check it's not TabBar (which requires Tabs parent)
+    if isinstance(tabs_component, ft.TabBar):
+        raise AssertionError(
+            "TabBar cannot be used standalone - it must be inside a Tabs control. "
+            "The error 'TabBar must be used within a Tabs control' will appear at runtime."
+        )

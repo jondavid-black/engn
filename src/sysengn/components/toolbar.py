@@ -26,17 +26,21 @@ class Toolbar(ft.Container):
         # Build logo
         logo = self._build_logo()
 
-        # Build tabs
-        self.tab_bar = ft.TabBar(
-            tabs=[ft.Tab(label=label) for label in self.TAB_LABELS],
-            on_click=self._handle_tab_change,
+        # Build navigation using SegmentedButton (standalone, doesn't require parent)
+        self.nav_tabs = ft.SegmentedButton(
+            selected=[self.TAB_LABELS[0]],
+            segments=[
+                ft.Segment(value=label, label=ft.Text(label))
+                for label in self.TAB_LABELS
+            ],
+            on_change=self._handle_tab_change,
         )
 
         self.content = ft.Row(
             controls=[
                 logo,
                 ft.Container(expand=True),  # Spacer to push tabs to center
-                self.tab_bar,
+                self.nav_tabs,
                 ft.Container(expand=True),  # Spacer for balance
             ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -58,12 +62,13 @@ class Toolbar(ft.Container):
 
     def _handle_tab_change(self, e: Any) -> None:
         """Handle tab selection change."""
-        # TabBar click event contains the selected tab index
-        if hasattr(e, "control") and hasattr(e.control, "selected_index"):
-            self._selected_tab = e.control.selected_index
-        elif hasattr(e, "data"):
-            # Event data may contain the index
-            self._selected_tab = int(e.data) if e.data else 0
+        if hasattr(e, "control") and hasattr(e.control, "selected"):
+            selected = e.control.selected
+            if selected:
+                # Get the first selected value
+                selected_label = list(selected)[0]
+                if selected_label in self.TAB_LABELS:
+                    self._selected_tab = self.TAB_LABELS.index(selected_label)
         self.on_tab_change(self._selected_tab)
 
     @property
@@ -75,8 +80,14 @@ class Toolbar(ft.Container):
     def selected_index(self, value: int) -> None:
         """Set the selected tab index."""
         self._selected_tab = value
+        self.nav_tabs.selected = [self.TAB_LABELS[value]]
 
     @property
-    def tabs(self) -> ft.TabBar:
+    def tabs(self) -> ft.SegmentedButton:
         """Get the tabs component for testing."""
-        return self.tab_bar
+        return self.nav_tabs
+
+    @property
+    def tab_labels(self) -> list[str]:
+        """Get the list of tab labels."""
+        return self.TAB_LABELS

@@ -17,3 +17,8 @@ Feature: SysEngn Toolbar
     Given the SysEngn toolbar component is initialized
     When I simulate selecting tab index 2
     Then the tab change callback should be invoked with index 2
+
+  Scenario: Toolbar uses standalone navigation component
+    Given the SysEngn toolbar component is initialized
+    Then the navigation tabs should be a standalone flet control
+    And the navigation tabs should not require a parent container
