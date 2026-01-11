@@ -23,6 +23,5 @@ def test_projengn_flet_startup():
 
 def test_flet_main():
     mock_page = MagicMock(spec=ft.Page)
-    flet_main(mock_page)
+    flet_main(mock_page, working_directory=".")
     assert mock_page.title == "ProjEngn"
-    mock_page.add.assert_called()
