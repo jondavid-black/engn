@@ -106,19 +106,22 @@ class Toolbar(ft.Container):
 
         active_project_id = initial_project_id
         if session:
-            current_session_project = session.get("current_project_id")
+            # Modern Flet session access via .store
+            store = getattr(session, "store", session)
+            current_session_project = store.get("current_project_id")
             if not current_session_project and initial_project_id:
-                session.set("current_project_id", initial_project_id)
+                store.set("current_project_id", initial_project_id)
             elif current_session_project:
                 # Validate it still exists
                 if not any(p.id == current_session_project for p in projects):
-                    session.set("current_project_id", initial_project_id)
-            active_project_id = session.get("current_project_id")
+                    store.set("current_project_id", initial_project_id)
+            active_project_id = store.get("current_project_id")
 
         def on_project_change(e):
             selected_id = e.control.value
             if selected_id and session:
-                session.set("current_project_id", selected_id)
+                store = getattr(session, "store", session)
+                store.set("current_project_id", selected_id)
                 # Refresh current view if it depends on project
                 project_dropdown.update()
 
@@ -251,12 +254,14 @@ class Toolbar(ft.Container):
             )
         ]
 
-        if self.user.has_role(Role.ADMIN) and self.on_admin:
+        if self.user.has_role(Role.ADMIN) and self.on_admin is not None:
+            # Local capture for type safety in lambda
+            on_admin_func = self.on_admin
             menu_items.append(
                 ft.PopupMenuItem(
                     content=ft.Text("Admin Panel"),
                     icon=ft.Icons.ADMIN_PANEL_SETTINGS,
-                    on_click=lambda e: self.on_admin(),  # type: ignore
+                    on_click=lambda e: on_admin_func(),
                 )
             )
 
