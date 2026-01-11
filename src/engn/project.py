@@ -90,13 +90,15 @@ def delete_project(name: str, working_dir: Path) -> bool:
 
 
 def list_projects(working_dir: Path) -> List[str]:
-    """List all projects in the working directory that have an engn.toml."""
+    """List all projects in the working directory (git repos or engn projects)."""
     if not working_dir.exists() or not working_dir.is_dir():
         return []
 
     projects = []
     for item in working_dir.iterdir():
-        if item.is_dir() and (item / "engn.toml").exists():
+        if item.is_dir() and (
+            (item / "engn.toml").exists() or (item / ".git").exists()
+        ):
             projects.append(item.name)
 
     return sorted(projects)

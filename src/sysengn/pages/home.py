@@ -79,6 +79,21 @@ class HomeDomainPage(ft.Row):
         project_cards = []
         for p in projects:
             is_default = self.user.default_project == p.name
+
+            status_chips = []
+            if p.is_git:
+                status_chips.append(
+                    ft.Chip(label=ft.Text("Git"), bgcolor=ft.Colors.BLUE_900)
+                )
+            if p.is_beads:
+                status_chips.append(
+                    ft.Chip(label=ft.Text("Beads"), bgcolor=ft.Colors.GREEN_900)
+                )
+            if p.is_initialized:
+                status_chips.append(
+                    ft.Chip(label=ft.Text("Engn"), bgcolor=ft.Colors.ORANGE_900)
+                )
+
             project_cards.append(
                 ft.Card(
                     content=ft.Container(
@@ -86,8 +101,25 @@ class HomeDomainPage(ft.Row):
                             [
                                 ft.ListTile(
                                     leading=ft.Icon(ft.Icons.FOLDER),
-                                    title=ft.Text(p.name),
-                                    subtitle=ft.Text(str(p.path)),
+                                    title=ft.Row(
+                                        [
+                                            ft.Text(p.name, weight=ft.FontWeight.BOLD),
+                                            ft.Container(width=10),
+                                            *status_chips,
+                                        ]
+                                    ),
+                                    subtitle=ft.Column(
+                                        [
+                                            ft.Text(str(p.path), size=12),
+                                            ft.Text(
+                                                f"Git Status: {p.git_status}"
+                                                if p.git_status
+                                                else "No git status",
+                                                size=10,
+                                                italic=True,
+                                            ),
+                                        ]
+                                    ),
                                     trailing=ft.Row(
                                         [
                                             ft.IconButton(
@@ -149,7 +181,12 @@ class HomeDomainPage(ft.Row):
                         ft.FilledButton(
                             content="New Project",
                             icon=ft.Icons.ADD,
-                            on_click=self._show_create_project_dialog,
+                            on_click=self._show_new_project_dialog,
+                        ),
+                        ft.FilledButton(
+                            content="Clone Project",
+                            icon=ft.Icons.DOWNLOAD,
+                            on_click=self._show_clone_project_dialog,
                         ),
                     ]
                 ),
@@ -326,12 +363,52 @@ class HomeDomainPage(ft.Row):
             )
             self.page_ref.update()
 
-    def _show_create_project_dialog(self, e):
+    def _show_new_project_dialog(self, e):
+        name_field = ft.TextField(label="Project Name", hint_text="my-new-project")
+
+        def create_project(e):
+            name = name_field.value
+            if not name:
+                return
+            try:
+                self.pm.new_project(name)
+                self._update_view()
+                if self.on_projects_changed:
+                    self.on_projects_changed()
+                self.update()
+                dialog.open = False
+            except Exception as ex:
+                self.page_ref.overlay.append(
+                    ft.SnackBar(ft.Text(f"Error: {ex}"), open=True)
+                )
+            self.page_ref.update()
+
+        dialog = ft.AlertDialog(
+            title=ft.Text("Create New Project"),
+            content=ft.Column(
+                [
+                    ft.Text("Create a new project from scratch."),
+                    name_field,
+                ],
+                tight=True,
+            ),
+            actions=[
+                ft.TextButton(
+                    content="Cancel", on_click=lambda e: setattr(dialog, "open", False)
+                ),
+                ft.TextButton(content="Create", on_click=create_project),
+            ],
+        )
+        self.page_ref.overlay.append(dialog)
+        dialog.open = True
+        self.page_ref.update()
+
+    def _show_clone_project_dialog(self, e):
         repo_url_field = ft.TextField(
             label="Git Repository URL", hint_text="https://github.com/user/repo.git"
         )
 
-        def create_project(e):
+        def clone_project(e):
             url = repo_url_field.value
             if not url:
                 return
@@ -349,7 +426,7 @@ class HomeDomainPage(ft.Row):
             self.page_ref.update()
 
         dialog = ft.AlertDialog(
-            title=ft.Text("Create New Project"),
+            title=ft.Text("Clone Project"),
             content=ft.Column(
                 [
                     ft.Text("Clone a git repository to create a new project."),
@@ -361,7 +438,7 @@ class HomeDomainPage(ft.Row):
                 ft.TextButton(
                     content="Cancel", on_click=lambda e: setattr(dialog, "open", False)
                 ),
-                ft.TextButton(content="Create", on_click=create_project),
+                ft.TextButton(content="Clone", on_click=clone_project),
             ],
         )
         self.page_ref.overlay.append(dialog)

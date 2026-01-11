@@ -1,8 +1,9 @@
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import List, Any, Dict
 
-import git
+from engn import project
 
 
 @dataclass
@@ -11,42 +12,38 @@ class Project:
     name: str
     path: Path
     is_initialized: bool = False
+    is_git: bool = False
+    is_beads: bool = False
+    git_status: str = ""
 
 
 class ProjectManager:
     def __init__(self, working_directory: str | Path):
         self.working_directory = Path(working_directory)
 
-    def list_projects(self) -> list[str]:
+    def list_projects(self) -> List[str]:
         """
         List all projects in the working directory.
-        A project is considered to be any directory that is a git repository.
         """
-        if not self.working_directory.exists():
-            return []
+        return project.list_projects(self.working_directory)
 
-        projects = []
-        for item in self.working_directory.iterdir():
-            if item.is_dir() and (item / ".git").exists():
-                projects.append(item.name)
-
-        return sorted(projects)
-
-    def get_all_projects(self) -> list[Project]:
+    def get_all_projects(self) -> List[Project]:
         """
-        Get all projects as Project objects.
+        Get all projects as Project objects with status information.
         """
         names = self.list_projects()
         projects = []
         for name in names:
-            path = self.working_directory / name
-            is_initialized = (path / "engn.toml").exists()
+            status = project.get_project_status(name, self.working_directory)
             projects.append(
                 Project(
-                    id=name,  # Use name as ID for now
+                    id=name,
                     name=name,
-                    path=path,
-                    is_initialized=is_initialized,
+                    path=Path(status["path"]),
+                    is_initialized=status["is_engn"],
+                    is_git=status["is_git"],
+                    is_beads=status["is_beads"],
+                    git_status=status.get("git_status", ""),
                 )
             )
         return projects
@@ -55,103 +52,69 @@ class ProjectManager:
         """
         Initialize an existing project with engn structure.
         """
-        project_path = self._get_project_path(project_name)
-
-        # Create directories
-        for dir_name in ["arch", "pm", "ux"]:
-            (project_path / dir_name).mkdir(exist_ok=True)
-
-        # Create engn.toml
-        config_path = project_path / "engn.toml"
-        if not config_path.exists():
-            with open(config_path, "w") as f:
-                f.write('arch_path = "arch"\n')
-                f.write('pm_path = "pm"\n')
-                f.write('ux_path = "ux"\n')
-
-        # Initialize beads if installed
-        import subprocess
-
-        if shutil.which("bd"):
-            try:
-                subprocess.run(["bd", "init"], cwd=project_path, check=True)
-            except subprocess.CalledProcessError:
-                # Beads might already be initialized or other error
-                pass
+        project_path = self.working_directory / project_name
+        project.init_project_structure(project_path)
 
     def create_project(self, repo_url: str) -> None:
         """
         Create a new project by cloning a git repository.
         """
-        if not self.working_directory.exists():
-            self.working_directory.mkdir(parents=True, exist_ok=True)
+        project.clone_project(repo_url, self.working_directory)
 
-        # Extract repo name from URL for directory name
-        # Basic parsing: ends with .git or just take the last part
-        name = repo_url.rstrip("/").split("/")[-1]
-        if name.endswith(".git"):
-            name = name[:-4]
-
-        target_dir = self.working_directory / name
-
-        if target_dir.exists():
-            raise FileExistsError(f"Project '{name}' already exists")
-
-        git.Repo.clone_from(repo_url, target_dir)
-
-    def _get_project_path(self, project_name: str) -> Path:
-        """Helper to get and validate project path."""
-        if not self.working_directory.exists():
-            raise FileNotFoundError(f"Project '{project_name}' not found")
-
-        project_path = self.working_directory / project_name
-
-        if not project_path.exists():
-            raise FileNotFoundError(f"Project '{project_name}' not found")
-
-        return project_path
+    def new_project(self, name: str) -> None:
+        """
+        Create a new project from scratch.
+        """
+        project.create_new_project(name, self.working_directory)
 
     def delete_project(self, project_name: str) -> None:
         """
         Delete a project from the working directory.
         """
-        project_path = self._get_project_path(project_name)
-
-        # Verify it's actually a directory before deleting
-        if not project_path.is_dir():
+        project_path = self.working_directory / project_name
+        if project_path.exists() and not project_path.is_dir():
             raise NotADirectoryError(f"'{project_name}' is not a directory")
 
-        shutil.rmtree(project_path)
+        if not project.delete_project(project_name, self.working_directory):
+            raise FileNotFoundError(f"Project '{project_name}' not found")
 
-    def list_branches(self, project_name: str) -> list[str]:
+    def list_branches(self, project_name: str) -> List[str]:
         """List all branches in a project."""
-        project_path = self._get_project_path(project_name)
+        import git
+
+        project_path = self.working_directory / project_name
         repo = git.Repo(project_path)
         return [head.name for head in repo.heads]
 
     def create_branch(self, project_name: str, branch_name: str) -> None:
         """Create a new branch and checkout to it."""
-        project_path = self._get_project_path(project_name)
+        import git
+
+        project_path = self.working_directory / project_name
         repo = git.Repo(project_path)
         new_branch = repo.create_head(branch_name)
         new_branch.checkout()
 
     def checkout_branch(self, project_name: str, branch_name: str) -> None:
         """Checkout an existing branch."""
-        project_path = self._get_project_path(project_name)
+        import git
+
+        project_path = self.working_directory / project_name
         repo = git.Repo(project_path)
 
-        if branch_name not in repo.heads:
+        if branch_name not in [h.name for h in repo.heads]:
             raise ValueError(f"Branch '{branch_name}' not found")
 
         repo.heads[branch_name].checkout()
 
     def delete_branch(self, project_name: str, branch_name: str) -> None:
         """Delete a branch."""
-        project_path = self._get_project_path(project_name)
+        import git
+
+        project_path = self.working_directory / project_name
         repo = git.Repo(project_path)
 
-        if branch_name not in repo.heads:
+        if branch_name not in [h.name for h in repo.heads]:
             raise ValueError(f"Branch '{branch_name}' not found")
 
         if repo.active_branch.name == branch_name:
@@ -161,11 +124,12 @@ class ProjectManager:
 
     def merge_branch(self, project_name: str, branch_name: str) -> None:
         """Merge a branch into the current active branch."""
-        project_path = self._get_project_path(project_name)
+        import git
+
+        project_path = self.working_directory / project_name
         repo = git.Repo(project_path)
 
-        if branch_name not in repo.heads:
+        if branch_name not in [h.name for h in repo.heads]:
             raise ValueError(f"Branch '{branch_name}' not found")
 
-        # This is a simplified merge that assumes no conflicts for now
         repo.git.merge(branch_name)

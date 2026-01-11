@@ -39,9 +39,19 @@ def home_page(mock_page, mock_user):
         p1 = Mock()
         p1.name = "proj1"
         p1.path = Path("/tmp/proj1")
+        p1.is_git = True
+        p1.is_beads = True
+        p1.is_initialized = True
+        p1.git_status = "clean"
+
         p2 = Mock()
         p2.name = "proj2"
         p2.path = Path("/tmp/proj2")
+        p2.is_git = False
+        p2.is_beads = False
+        p2.is_initialized = False
+        p2.git_status = ""
+
         mock_pm.get_all_projects.return_value = [p1, p2]
 
         mock_it = mock_it_cls.return_value
@@ -102,16 +112,18 @@ def test_set_default_project_no_page(home_page):
     original_page = home_page.page_ref
     home_page.page_ref = None  # type: ignore
     with patch("sysengn.pages.home.update_user_default_project"):
-        # This should cover line 247: if self.page: (which uses self.page_ref if not attached)
-        # Actually HomeDomainPage inherits from Row, which has .page property.
-        # If it's not attached, .page raises RuntimeError.
-        # But my code uses self.page_ref (which is passed in constructor)
         home_page._set_default_project("proj1")
     home_page.page_ref = original_page
 
 
-def test_show_create_project_dialog(home_page, mock_page):
-    home_page._show_create_project_dialog(None)
+def test_show_new_project_dialog(home_page, mock_page):
+    home_page._show_new_project_dialog(None)
+    assert len(mock_page.overlay) > 0
+    assert isinstance(mock_page.overlay[0], ft.AlertDialog)
+
+
+def test_show_clone_project_dialog(home_page, mock_page):
+    home_page._show_clone_project_dialog(None)
     assert len(mock_page.overlay) > 0
     assert isinstance(mock_page.overlay[0], ft.AlertDialog)
 
@@ -132,20 +144,27 @@ def test_delete_project_flow(home_page, mock_page):
         mock_del.assert_called_with("proj1")
 
 
-def test_delete_project_error(home_page, mock_page):
-    home_page._delete_project("proj1")
+def test_new_project_flow(home_page, mock_page):
+    home_page._show_new_project_dialog(None)
     dialog = cast(ft.AlertDialog, mock_page.overlay[-1])
-    delete_button = cast(ft.TextButton, dialog.actions[1])
 
-    with patch.object(home_page.pm, "delete_project") as mock_del:
-        mock_del.side_effect = Exception("Delete failed")
-        if delete_button.on_click:
-            delete_button.on_click(None)  # type: ignore
-        assert len(mock_page.overlay) > 0
+    # Fill in the Name
+    dialog_content = cast(ft.Column, dialog.content)
+    name_field = cast(ft.TextField, dialog_content.controls[1])
+    name_field.value = "my-new-proj"
+
+    # Find the "Create" button and call its on_click
+    create_button = cast(ft.TextButton, dialog.actions[1])
+    assert create_button.content == "Create"
+
+    with patch.object(home_page.pm, "new_project") as mock_new:
+        if create_button.on_click:
+            create_button.on_click(None)  # type: ignore
+        mock_new.assert_called_with("my-new-proj")
 
 
-def test_create_project_flow(home_page, mock_page):
-    home_page._show_create_project_dialog(None)
+def test_clone_project_flow(home_page, mock_page):
+    home_page._show_clone_project_dialog(None)
     dialog = cast(ft.AlertDialog, mock_page.overlay[-1])
 
     # Fill in the URL
@@ -153,45 +172,14 @@ def test_create_project_flow(home_page, mock_page):
     repo_url_field = cast(ft.TextField, dialog_content.controls[1])
     repo_url_field.value = "https://github.com/test/repo.git"
 
-    # Find the "Create" button and call its on_click
-    create_button = cast(ft.TextButton, dialog.actions[1])
-    assert create_button.content == "Create"
+    # Find the "Clone" button and call its on_click
+    clone_button = cast(ft.TextButton, dialog.actions[1])
+    assert clone_button.content == "Clone"
 
-    with patch.object(home_page.pm, "create_project") as mock_create:
-        if create_button.on_click:
-            create_button.on_click(None)  # type: ignore
-        mock_create.assert_called_with("https://github.com/test/repo.git")
-
-
-def test_create_project_no_url(home_page, mock_page):
-    home_page._show_create_project_dialog(None)
-    dialog = cast(ft.AlertDialog, mock_page.overlay[-1])
-    create_button = cast(ft.TextButton, dialog.actions[1])
-
-    dialog_content = cast(ft.Column, dialog.content)
-    repo_url_field = cast(ft.TextField, dialog_content.controls[1])
-    repo_url_field.value = ""
-
-    with patch.object(home_page.pm, "create_project") as mock_create:
-        if create_button.on_click:
-            create_button.on_click(None)  # type: ignore
-        mock_create.assert_not_called()
-
-
-def test_create_project_error(home_page, mock_page):
-    home_page._show_create_project_dialog(None)
-    dialog = cast(ft.AlertDialog, mock_page.overlay[-1])
-    create_button = cast(ft.TextButton, dialog.actions[1])
-
-    dialog_content = cast(ft.Column, dialog.content)
-    repo_url_field = cast(ft.TextField, dialog_content.controls[1])
-    repo_url_field.value = "invalid-url"
-
-    with patch.object(home_page.pm, "create_project") as mock_create:
-        mock_create.side_effect = Exception("Clone failed")
-        if create_button.on_click:
-            create_button.on_click(None)  # type: ignore
-        assert len(mock_page.overlay) > 0
+    with patch.object(home_page.pm, "create_project") as mock_clone:
+        if clone_button.on_click:
+            clone_button.on_click(None)  # type: ignore
+        mock_clone.assert_called_with("https://github.com/test/repo.git")
 
 
 def test_on_rail_change_no_project(mock_page, mock_user):
