@@ -5,12 +5,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 import flet as ft
 import pytest
 
-from engn.ui.tree_view import (
-    TreeNode,
-    TreeView,
-    move_node,
-    delete_node,
-)
+from engn.ui.tree_view import TreeNode, TreeView, move_node, delete_node
 
 
 @pytest.fixture
@@ -26,7 +21,9 @@ class TestTreeViewExtended:
     def test_update_data(self, mock_page) -> None:
         """Test update_data refreshes roots and map."""
         tree = TreeView()
-        tree._Control__page = mock_page
+        setattr(
+            tree, "_Control__page", mock_page
+        )  # Manually set page to avoid RuntimeError
         new_roots = [TreeNode(id="1", label="New Root")]
 
         with patch.object(tree, "render") as mock_render:
@@ -39,7 +36,7 @@ class TestTreeViewExtended:
         """Test select_node and clear_selection."""
         node = TreeNode(id="1", label="Node")
         tree = TreeView(roots=[node])
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
         tree._rebuild_node_map()
 
         on_select = MagicMock()
@@ -57,7 +54,7 @@ class TestTreeViewExtended:
         """Test expand_node and collapse_node."""
         node = TreeNode(id="1", label="Folder", is_folder=True)
         tree = TreeView(roots=[node])
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
         tree._rebuild_node_map()
 
         with patch.object(tree, "render"):
@@ -78,7 +75,7 @@ class TestTreeViewExtended:
             )
         ]
         tree = TreeView(roots=nodes)
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
         tree._rebuild_node_map()
 
         with patch.object(tree, "render"):

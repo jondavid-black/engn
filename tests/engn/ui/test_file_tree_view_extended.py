@@ -40,7 +40,9 @@ class TestFileTreeViewExtended:
     def test_did_mount(self, tmp_path: Path, mock_page) -> None:
         """Test did_mount loads directory."""
         tree = FileTreeView(root_path=tmp_path)
-        tree._Control__page = mock_page  # Manually set page to avoid RuntimeError
+        setattr(
+            tree, "_Control__page", mock_page
+        )  # Manually set page to avoid RuntimeError
         with (
             patch.object(tree, "load_directory") as mock_load,
             patch.object(tree, "render"),
@@ -51,7 +53,7 @@ class TestFileTreeViewExtended:
     def test_refresh_call(self, tmp_path: Path, mock_page) -> None:
         """Test refresh calls load_directory."""
         tree = FileTreeView(root_path=tmp_path)
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
         with patch.object(tree, "load_directory") as mock_load:
             tree.refresh()
             mock_load.assert_called_once_with(tmp_path)
@@ -61,7 +63,7 @@ class TestFileTreeViewExtended:
         subdir = tmp_path / "subdir"
         subdir.mkdir()
         tree = FileTreeView(root_path=tmp_path)
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
 
         with patch.object(tree, "update"):  # Mock update to avoid Flet internals
             tree.load_directory(tmp_path)
@@ -80,7 +82,7 @@ class TestFileTreeViewExtended:
         """Test move with callback."""
         on_move = MagicMock(return_value=True)
         tree = FileTreeView(root_path=tmp_path, on_file_move=on_move)
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
 
         with patch.object(tree, "update"):
             tree.load_directory(tmp_path)
@@ -99,7 +101,7 @@ class TestFileTreeViewExtended:
     def test_handle_move_no_callback(self, tmp_path: Path, mock_page) -> None:
         """Test move without callback."""
         tree = FileTreeView(root_path=tmp_path)
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
 
         with patch.object(tree, "update"):
             tree.load_directory(tmp_path)
@@ -118,7 +120,7 @@ class TestFileTreeViewExtended:
         """Test delete with callback."""
         on_delete = MagicMock(return_value=True)
         tree = FileTreeView(root_path=tmp_path, on_file_delete=on_delete)
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
 
         with patch.object(tree, "update"):
             tree.load_directory(tmp_path)
@@ -136,7 +138,7 @@ class TestFileTreeViewExtended:
     def test_handle_delete_no_callback(self, tmp_path: Path, mock_page) -> None:
         """Test delete without callback."""
         tree = FileTreeView(root_path=tmp_path)
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
 
         with patch.object(tree, "update"):
             tree.load_directory(tmp_path)
@@ -158,9 +160,12 @@ class TestFileTreeViewExtended:
         target.touch()
 
         tree = FileTreeView(root_path=tmp_path)
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
 
-        with patch.object(tree, "update"), patch.object(tree, "select_node"):
+        with (
+            patch.object(tree, "update"),
+            patch.object(tree, "select_node") as mock_select,
+        ):
             tree.load_directory(tmp_path)
             tree.expand_to_path(target)
 
@@ -173,7 +178,7 @@ class TestFileTreeViewExtended:
             assert node_b is not None
             assert node_b.is_expanded is True
 
-            tree.select_node.assert_called_once_with(str(target))
+            mock_select.assert_called_once_with(str(target))
 
     def test_expand_to_path_no_root(self) -> None:
         """Test expand_to_path when root_path is None."""
@@ -183,7 +188,7 @@ class TestFileTreeViewExtended:
     def test_expand_to_path_outside_root(self, tmp_path: Path, mock_page) -> None:
         """Test expand_to_path for a path outside root."""
         tree = FileTreeView(root_path=tmp_path)
-        tree._Control__page = mock_page
+        setattr(tree, "_Control__page", mock_page)
         with patch.object(tree, "update"):
             tree.load_directory(tmp_path)
             tree.expand_to_path(
