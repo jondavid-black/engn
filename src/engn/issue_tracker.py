@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 from typing import Any, Optional
 
 
@@ -11,6 +12,11 @@ class IssueTrackerError(Exception):
 
 class IssueTracker:
     """Interface for interacting with the beads (bd) issue tracker."""
+
+    def __init__(self, working_directory: Optional[str | Path] = None):
+        self.working_directory = (
+            Path(working_directory) if working_directory else Path.cwd()
+        )
 
     def _run_bd_command(self, args: list[str]) -> Any:
         """
@@ -27,7 +33,13 @@ class IssueTracker:
         """
         cmd = ["bd"] + args + ["--json"]
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=str(self.working_directory),
+            )
             if not result.stdout.strip():
                 return None
             return json.loads(result.stdout)

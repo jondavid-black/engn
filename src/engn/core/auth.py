@@ -43,6 +43,7 @@ class User:
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     preferred_color: Optional[str] = None
+    default_project: Optional[str] = None
     roles: list[Role] = field(default_factory=list)
     theme_preference: str = "DARK"
 
@@ -122,6 +123,7 @@ def authenticate_local_user(email: str, password: str) -> Optional[User]:
                     first_name=user_data.get("first_name"),
                     last_name=user_data.get("last_name"),
                     preferred_color=user_data.get("preferred_color"),
+                    default_project=user_data.get("default_project"),
                     roles=roles,
                     theme_preference=user_data.get("theme_preference", "DARK"),
                 )
@@ -166,13 +168,19 @@ def create_user(
         "password_hash": password_hash,
         "roles": [r.value for r in roles],
         "theme_preference": "DARK",
+        "default_project": None,
     }
 
     config["users"].append(user_data)
     _write_config(config)
 
     return User(
-        id=user_id, email=email, name=name, roles=roles, theme_preference="DARK"
+        id=user_id,
+        email=email,
+        name=name,
+        roles=roles,
+        theme_preference="DARK",
+        default_project=None,
     )
 
 
@@ -182,6 +190,16 @@ def update_user_theme_preference(user_id: str, theme_mode: str) -> None:
     for user_data in config.get("users", []):
         if user_data.get("id") == user_id:
             user_data["theme_preference"] = theme_mode
+            _write_config(config)
+            return
+
+
+def update_user_default_project(user_id: str, default_project: Optional[str]) -> None:
+    """Updates the user's default project in the config file."""
+    config = _read_config()
+    for user_data in config.get("users", []):
+        if user_data.get("id") == user_id:
+            user_data["default_project"] = default_project
             _write_config(config)
             return
 

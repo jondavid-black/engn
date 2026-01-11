@@ -10,9 +10,9 @@ from engn.config import ProjectConfig
 from engn.core.auth import get_oauth_providers, User as EngnUser
 from sysengn.auth import Authenticator, User as SysEngnUser
 from sysengn.views import LoginView
+from sysengn.pages.home import HomeDomainPage
 from sysengn.components import (
     Toolbar,
-    HomeView,
     MBSEView,
     UXView,
     DocsView,
@@ -40,7 +40,7 @@ class MainApp:
 
         # Create domain views
         self.views = [
-            HomeView(),
+            HomeDomainPage(self.page, self.user, Path.cwd()),  # type: ignore
             MBSEView(),
             UXView(),
             DocsView(),
