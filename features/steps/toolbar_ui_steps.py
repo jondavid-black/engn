@@ -98,7 +98,9 @@ def step_logo_visible(context):
 
     # Logo is rendered on the canvas, verify flutter view is present
     flutter_view = page.locator("flutter-view")
-    assert flutter_view.is_visible(timeout=10000), "Flutter view (containing logo) not visible"
+    assert flutter_view.is_visible(timeout=10000), (
+        "Flutter view (containing logo) not visible"
+    )
 
 
 @then("all navigation tabs should be visible")  # type: ignore
