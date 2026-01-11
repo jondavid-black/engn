@@ -3,7 +3,6 @@
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from engn.ui.terminal_emulator import TerminalEmulator
 
@@ -21,7 +20,9 @@ class TestTerminalEmulatorInit:
         assert terminal.port == TerminalEmulator.DEFAULT_PORT
         assert terminal.writable is True
         assert terminal.is_running is False
-        assert terminal.terminal_url == f"http://localhost:{TerminalEmulator.DEFAULT_PORT}"
+        assert (
+            terminal.terminal_url == f"http://localhost:{TerminalEmulator.DEFAULT_PORT}"
+        )
 
     @patch("engn.ui.terminal_emulator.shutil.which")
     @patch("engn.ui.terminal_emulator.WEBVIEW_AVAILABLE", True)

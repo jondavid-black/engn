@@ -1,7 +1,7 @@
 """Toolbar component for SysEngn application."""
 
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import flet as ft
 from flet.controls.border import Border, BorderSide
@@ -66,7 +66,9 @@ class Toolbar(ft.Container):
             is_selected = i == self._selected_tab
             text = ft.Text(
                 label,
-                color=ft.Colors.PRIMARY if is_selected else ft.Colors.ON_SURFACE_VARIANT,
+                color=ft.Colors.PRIMARY
+                if is_selected
+                else ft.Colors.ON_SURFACE_VARIANT,
                 weight=ft.FontWeight.W_500,
             )
             self._tab_texts.append(text)
@@ -76,15 +78,15 @@ class Toolbar(ft.Container):
                 width=self.TAB_WIDTH,
                 padding=Padding.symmetric(vertical=8),
                 alignment=ft.Alignment(0, 0),
-                border=Border(
-                    bottom=BorderSide(2, ft.Colors.PRIMARY) if is_selected else None
-                ),
+                border=Border(bottom=BorderSide(2, ft.Colors.PRIMARY))
+                if is_selected
+                else None,
                 on_click=lambda e, idx=i: self._handle_tab_click(idx),
             )
             self._tab_containers.append(container)
 
         return ft.Row(
-            controls=self._tab_containers,
+            controls=cast(list[ft.Control], self._tab_containers),
             spacing=0,
         )
 
@@ -94,10 +96,13 @@ class Toolbar(ft.Container):
             zip(self._tab_containers, self._tab_texts)
         ):
             is_selected = i == self._selected_tab
-            text.color = ft.Colors.PRIMARY if is_selected else ft.Colors.ON_SURFACE_VARIANT
-            container.border = Border(
-                bottom=BorderSide(2, ft.Colors.PRIMARY) if is_selected else None
+            text.color = (
+                ft.Colors.PRIMARY if is_selected else ft.Colors.ON_SURFACE_VARIANT
             )
+            container.border = (
+                Border(bottom=BorderSide(2, ft.Colors.PRIMARY)) if is_selected else None
+            )
+            container.update()
 
     def _handle_tab_click(self, index: int) -> None:
         """Handle tab click."""
