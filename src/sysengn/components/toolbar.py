@@ -194,9 +194,25 @@ class Toolbar(ft.Container):
             # Fallback for now if not provided
             print("Terminal toggle callback not provided")
 
+    def refresh_projects(self):
+        """Refresh the project list in the dropdown."""
+        pm = ProjectManager(self.working_directory)
+        projects = pm.get_all_projects()
+        self.project_dropdown.options = [
+            ft.dropdown.Option(key=p.id, text=p.name) for p in projects
+        ]
+
+        # Check if current value is still valid
+        if self.project_dropdown.value and not any(
+            p.id == self.project_dropdown.value for p in projects
+        ):
+            self.project_dropdown.value = projects[0].id if projects else None
+
+        self.project_dropdown.update()
+
     def _build_content(self):
         # Left: Icon, Name, Project Dropdown, Workspace Dropdown
-        project_dropdown = self._build_project_dropdown()
+        self.project_dropdown = self._build_project_dropdown()
 
         workspace_dropdown = ft.Dropdown(
             width=200,
@@ -227,7 +243,7 @@ class Toolbar(ft.Container):
                     on_click=lambda _: self.select_tab(0),
                 ),
                 ft.Container(width=10),
-                project_dropdown,
+                self.project_dropdown,
                 ft.Container(width=10),
                 workspace_dropdown,
             ],

@@ -1,6 +1,6 @@
 import flet as ft
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from engn.pm import ProjectManager
 from engn.issue_tracker import IssueTracker
@@ -10,12 +10,19 @@ from engn.core.auth import update_user_default_project, User as EngnUser
 class HomeDomainPage(ft.Row):
     """Home domain page with Project and Plan views."""
 
-    def __init__(self, page: ft.Page, user: EngnUser, working_directory: Path):
+    def __init__(
+        self,
+        page: ft.Page,
+        user: EngnUser,
+        working_directory: Path,
+        on_projects_changed: Optional[Callable[[], None]] = None,
+    ):
         super().__init__()
         self.page_ref = page
         self.user = user
         self.working_directory = working_directory
         self.pm = ProjectManager(working_directory)
+        self.on_projects_changed = on_projects_changed
 
         # Determine active project: either user's default or the first one found
         self.active_project_name = self.user.default_project
@@ -130,7 +137,13 @@ class HomeDomainPage(ft.Row):
                         ft.IconButton(
                             icon=ft.Icons.REFRESH,
                             tooltip="Refresh projects",
-                            on_click=lambda _: (self._update_view(), self.update()),
+                            on_click=lambda _: (
+                                self._update_view(),
+                                self.on_projects_changed()
+                                if self.on_projects_changed
+                                else None,
+                                self.update(),
+                            ),
                         ),
                         ft.Container(expand=True),
                         ft.FilledButton(
@@ -264,6 +277,8 @@ class HomeDomainPage(ft.Row):
                     projects = self.pm.list_projects()
                     self.active_project_name = projects[0] if projects else None
                 self._update_view()
+                if self.on_projects_changed:
+                    self.on_projects_changed()
                 self.update()
             except Exception as ex:
                 self.page_ref.overlay.append(
@@ -323,6 +338,8 @@ class HomeDomainPage(ft.Row):
             try:
                 self.pm.create_project(url)
                 self._update_view()
+                if self.on_projects_changed:
+                    self.on_projects_changed()
                 self.update()
                 dialog.open = False
             except Exception as ex:

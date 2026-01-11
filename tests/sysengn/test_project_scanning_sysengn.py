@@ -60,7 +60,9 @@ def test_home_domain_page_scans_provided_directory(tmp_path: Path):
     mock_user = MagicMock()
     mock_user.default_project = None
 
-    page = HomeDomainPage(mock_page, mock_user, tmp_path)
+    # Updated signature with on_projects_changed=None
+    page = HomeDomainPage(mock_page, mock_user, tmp_path, on_projects_changed=None)
 
     assert "found_it" in page.pm.list_projects()
+
     assert page.active_project_name == "found_it"

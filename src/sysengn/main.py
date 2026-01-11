@@ -40,14 +40,6 @@ class MainApp:
             self.user = self.authenticator.get_current_user()
         self.current_view_index = 0
 
-        # Create domain views
-        self.views = [
-            HomeDomainPage(self.page, self.user, self.working_directory),  # type: ignore
-            MBSEView(),
-            UXView(),
-            DocsView(),
-        ]
-
         # Create toolbar
         logo_path = str("engn_logo_core_tiny_transparent.png")
         self.toolbar = Toolbar(
@@ -62,6 +54,19 @@ class MainApp:
             on_admin=self._on_admin,
             on_toggle_terminal=self._on_toggle_terminal,
         )
+
+        # Create domain views
+        self.views = [
+            HomeDomainPage(
+                self.page,
+                self.user,
+                self.working_directory,
+                on_projects_changed=self.toolbar.refresh_projects,
+            ),  # type: ignore
+            MBSEView(),
+            UXView(),
+            DocsView(),
+        ]
 
         # Content area for domain views
         self.content_area = ft.Container(
