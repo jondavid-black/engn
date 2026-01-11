@@ -134,16 +134,20 @@ def step_click_tab(context, tab_name):
     context.initial_screenshot = page.screenshot()
 
     # Map tab names to x coordinates (y=30 for toolbar)
+    # Trying coordinates centered around 705 with some buffer
     tab_positions = {
-        "Home": 525,
-        "MBSE": 615,
-        "UX": 706,
-        "Docs": 797,
+        "Home": 590,
+        "MBSE": 670,
+        "UX": 750,
+        "Docs": 830,
     }
 
-    x_pos = tab_positions.get(tab_name, 615)
-    page.mouse.click(x_pos, 30)
-    time.sleep(1)  # Wait for content to update
+    x_pos = tab_positions.get(tab_name, 670)
+    # Click in a small 3x3 grid around the point to increase chance of hitting the control
+    for dx in [-2, 0, 2]:
+        for dy in [-2, 0, 2]:
+            page.mouse.click(x_pos + dx, 40 + dy)
+    time.sleep(2)  # Wait for content to update
 
 
 @then("the MBSE view content should be displayed")  # type: ignore

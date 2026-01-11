@@ -47,12 +47,22 @@ class Toolbar(ft.Container):
         self._build_content()
 
     def _build_tabs(self) -> ft.Tabs:
+        def on_tab_click(e):
+            index = int(e.data)
+            self.tabs_control.selected_index = index
+            try:
+                self.tabs_control.update()
+            except Exception:
+                pass
+            self.on_tab_change(index)
+
         tab_bar = ft.TabBar(
             tabs=[ft.Tab(label=name) for name in self.tabs_list],
             indicator_color=ft.Colors.BLUE_200,
             label_color=ft.Colors.BLUE_200,
             unselected_label_color=ft.Colors.GREY_400,
             divider_color="transparent",
+            on_click=on_tab_click,
         )
 
         return ft.Tabs(
@@ -60,9 +70,6 @@ class Toolbar(ft.Container):
             animation_duration=300,
             length=len(self.tabs_list),
             content=tab_bar,
-            on_change=lambda e: self.on_tab_change(
-                e.control.selected_index if e.control else 0
-            ),
         )
 
     def _build_avatar(self) -> ft.CircleAvatar:
@@ -95,28 +102,28 @@ class Toolbar(ft.Container):
         initial_project_id = projects[0].id if projects else None
 
         # Only override session if not already set or invalid
-        current_session_project = self.page_ref.session.get("current_project_id")  # type: ignore
-        if not current_session_project and initial_project_id:
-            self.page_ref.session.set("current_project_id", initial_project_id)  # type: ignore
-        elif current_session_project:
-            # Validate it still exists
-            if not any(p.id == current_session_project for p in projects):
-                self.page_ref.session.set("current_project_id", initial_project_id)  # type: ignore
+        session = getattr(self.page_ref, "session", None)
 
-        # Get final effective project ID
-        active_project_id = self.page_ref.session.get("current_project_id")  # type: ignore
+        active_project_id = initial_project_id
+        if session:
+            current_session_project = session.get("current_project_id")
+            if not current_session_project and initial_project_id:
+                session.set("current_project_id", initial_project_id)
+            elif current_session_project:
+                # Validate it still exists
+                if not any(p.id == current_session_project for p in projects):
+                    session.set("current_project_id", initial_project_id)
+            active_project_id = session.get("current_project_id")
 
         def on_project_change(e):
             selected_id = e.control.value
-            if selected_id:
-                self.page_ref.session.set("current_project_id", selected_id)  # type: ignore
+            if selected_id and session:
+                session.set("current_project_id", selected_id)
                 # Refresh current view if it depends on project
                 project_dropdown.update()
 
                 # If currently on MBSE screen (index 1), we might want to refresh content area
-                current_tab_idx = 0
-                if self.tabs_control.selected_index is not None:
-                    current_tab_idx = self.tabs_control.selected_index
+                current_tab_idx = self.tabs_control.selected_index or 0
 
                 # Assuming standard tabs: Home, MBSE, UX, Docs
                 # If "MBSE" is in tabs list and selected
@@ -129,8 +136,6 @@ class Toolbar(ft.Container):
         project_dropdown = ft.Dropdown(
             width=200,
             text_size=14,
-            # content_padding=ft.padding.symmetric(horizontal=10, vertical=0),
-            # Padding(left, top, right, bottom)
             content_padding=ft.Padding(10, 0, 10, 0),
             # Default to active project
             value=active_project_id,
@@ -141,10 +146,8 @@ class Toolbar(ft.Container):
             border_radius=5,
             leading_icon=ft.Icons.FOLDER_OPEN,
             tooltip="Select Active Project",
+            on_select=on_project_change,
         )
-        # Assign on_change separately to avoid __init__ issues if any
-        project_dropdown.on_change = on_project_change
-
         return project_dropdown
 
     def _toggle_theme(self, e):
@@ -292,18 +295,22 @@ class Toolbar(ft.Container):
         )
 
         banner_row = ft.Row(
-            controls=[left_section, self.tabs_control, right_section],
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            controls=[
+                left_section,
+                ft.Container(
+                    content=self.tabs_control, expand=True, alignment=ft.Alignment(0, 0)
+                ),
+                right_section,
+            ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            expand=True,
         )
 
         self.content = banner_row
-        self.padding = ft.padding.symmetric(horizontal=20, vertical=10)
+        self.padding = ft.Padding(20, 10, 20, 10)
         self.bgcolor = "#36454F"  # Charcoal
         self.shadow = ft.BoxShadow(
             spread_radius=1,
             blur_radius=5,
-            color=ft.Colors.BLACK12,
+            color=ft.Colors.BLACK_12,
             offset=ft.Offset(0, 2),
         )

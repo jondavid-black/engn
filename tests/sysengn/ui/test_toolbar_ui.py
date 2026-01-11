@@ -96,18 +96,18 @@ class TestToolbarUnit:
 
     def test_tab_change(self, toolbar):
         """Test that changing tabs triggers the callback."""
+        # Access the TabBar within Tabs
+        tab_bar = cast(ft.TabBar, toolbar.tabs_control.content)
+
         # Simulate tab change event
         e = MagicMock(spec=ft.ControlEvent)
-        e.control = toolbar.tabs_control
-        e.control.selected_index = 1
+        e.data = "1"
 
-        # The lambda in the code calls self.on_tab_change(e.control.selected_index)
-        # We can simulate the lambda execution by calling the on_change handler if it were exposed
-        # or checking the on_change attribute
-        assert toolbar.tabs_control.on_change is not None
+        # The on_tab_click handler in the code calls self.on_tab_change(index)
+        assert tab_bar.on_click is not None
 
-        # Execute the lambda
-        toolbar.tabs_control.on_change(e)
+        # Execute the handler
+        tab_bar.on_click(e)
 
         toolbar.on_tab_change.assert_called_with(1)
 

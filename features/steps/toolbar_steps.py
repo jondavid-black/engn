@@ -128,14 +128,14 @@ def step_tabs_have_labels(context, labels):
 @when("I simulate selecting tab index {index:d}")  # type: ignore
 def step_select_tab(context, index):
     """Simulate a tab selection event."""
-    # For Tabs control, we trigger the change event
+    # The header is now a TabBar inside Tabs
+    tab_bar = context.toolbar.tabs_control.content
     e = MagicMock(spec=ft.ControlEvent)
-    e.control = context.toolbar.tabs_control
-    e.control.selected_index = index
+    e.data = str(index)
 
-    # Trigger the on_change callback
-    if context.toolbar.tabs_control.on_change:
-        context.toolbar.tabs_control.on_change(e)
+    # Trigger the on_click callback of TabBar
+    if tab_bar.on_click:
+        tab_bar.on_click(e)
 
 
 @then("the tab change callback should be invoked with index {index:d}")  # type: ignore
