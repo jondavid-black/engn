@@ -1,7 +1,10 @@
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Any, Dict
+from typing import Any, Dict
+
+import git
+from git import exc
 
 from engn import project
 
@@ -15,19 +18,24 @@ class Project:
     is_git: bool = False
     is_beads: bool = False
     git_status: str = ""
+    branches: list[str] | None = None
+
+    def __post_init__(self):
+        if self.branches is None:
+            self.branches = []
 
 
 class ProjectManager:
     def __init__(self, working_directory: str | Path):
         self.working_directory = Path(working_directory)
 
-    def list_projects(self) -> List[str]:
+    def list_projects(self) -> list[str]:
         """
         List all projects in the working directory.
         """
         return project.list_projects(self.working_directory)
 
-    def get_all_projects(self) -> List[Project]:
+    def get_all_projects(self) -> list[Project]:
         """
         Get all projects as Project objects with status information.
         """
@@ -35,6 +43,12 @@ class ProjectManager:
         projects = []
         for name in names:
             status = project.get_project_status(name, self.working_directory)
+            branches = []
+            if status["is_git"]:
+                try:
+                    branches = self.list_branches(name)
+                except Exception:
+                    pass
             projects.append(
                 Project(
                     id=name,
@@ -44,6 +58,7 @@ class ProjectManager:
                     is_git=status["is_git"],
                     is_beads=status["is_beads"],
                     git_status=status.get("git_status", ""),
+                    branches=branches,
                 )
             )
         return projects
@@ -78,29 +93,20 @@ class ProjectManager:
         if not project.delete_project(project_name, self.working_directory):
             raise FileNotFoundError(f"Project '{project_name}' not found")
 
-    def list_branches(self, project_name: str) -> List[str]:
+    def list_branches(self, project_name: str) -> list[str]:
         """List all branches in a project."""
-        import git
-
-        project_path = self.working_directory / project_name
-        repo = git.Repo(project_path)
+        repo = self._get_repo(project_name)
         return [head.name for head in repo.heads]
 
     def create_branch(self, project_name: str, branch_name: str) -> None:
         """Create a new branch and checkout to it."""
-        import git
-
-        project_path = self.working_directory / project_name
-        repo = git.Repo(project_path)
+        repo = self._get_repo(project_name)
         new_branch = repo.create_head(branch_name)
         new_branch.checkout()
 
     def checkout_branch(self, project_name: str, branch_name: str) -> None:
         """Checkout an existing branch."""
-        import git
-
-        project_path = self.working_directory / project_name
-        repo = git.Repo(project_path)
+        repo = self._get_repo(project_name)
 
         if branch_name not in [h.name for h in repo.heads]:
             raise ValueError(f"Branch '{branch_name}' not found")
@@ -109,10 +115,7 @@ class ProjectManager:
 
     def delete_branch(self, project_name: str, branch_name: str) -> None:
         """Delete a branch."""
-        import git
-
-        project_path = self.working_directory / project_name
-        repo = git.Repo(project_path)
+        repo = self._get_repo(project_name)
 
         if branch_name not in [h.name for h in repo.heads]:
             raise ValueError(f"Branch '{branch_name}' not found")
@@ -124,12 +127,20 @@ class ProjectManager:
 
     def merge_branch(self, project_name: str, branch_name: str) -> None:
         """Merge a branch into the current active branch."""
-        import git
-
-        project_path = self.working_directory / project_name
-        repo = git.Repo(project_path)
+        repo = self._get_repo(project_name)
 
         if branch_name not in [h.name for h in repo.heads]:
             raise ValueError(f"Branch '{branch_name}' not found")
 
         repo.git.merge(branch_name)
+
+    def _get_repo(self, project_name: str) -> git.Repo:
+        """Helper to get and validate git repository."""
+        project_path = self.working_directory / project_name
+        if not project_path.exists():
+            raise FileNotFoundError(f"Project '{project_name}' not found")
+
+        try:
+            return git.Repo(project_path)
+        except exc.InvalidGitRepositoryError:
+            raise ValueError(f"Project '{project_name}' is not a git repository")

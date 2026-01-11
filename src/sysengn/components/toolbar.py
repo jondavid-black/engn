@@ -139,6 +139,9 @@ class Toolbar(ft.Container):
                 # Refresh current view if it depends on project
                 project_dropdown.update()
 
+                # Refresh branches
+                self.refresh_branches()
+
                 # If currently on MBSE screen (index 1), we might want to refresh content area
                 current_tab_idx = self.tabs_control.selected_index or 0
 
@@ -163,9 +166,80 @@ class Toolbar(ft.Container):
             border_radius=5,
             leading_icon=ft.Icons.FOLDER_OPEN,
             tooltip="Select Active Project",
-            on_select=on_project_change,
         )
+        project_dropdown.on_change = on_project_change
         return project_dropdown
+
+    def _build_branch_dropdown(self) -> ft.Dropdown:
+        pm = ProjectManager(self.working_directory)
+
+        session = getattr(self.page_ref, "session", None)
+        active_project_id = None
+        if session:
+            store = getattr(session, "store", session)
+            active_project_id = store.get("current_project_id")
+
+        branches = []
+        if active_project_id:
+            try:
+                branches = pm.list_branches(active_project_id)
+            except Exception:
+                pass
+
+        branch_options = [ft.dropdown.Option(b) for b in branches]
+
+        def on_branch_change(e):
+            selected_branch = e.control.value
+            if selected_branch and active_project_id:
+                try:
+                    pm.checkout_branch(active_project_id, selected_branch)
+                    self.page_ref.overlay.append(
+                        ft.SnackBar(
+                            ft.Text(f"Switched to branch: {selected_branch}"), open=True
+                        )
+                    )
+                    self.page_ref.update()
+                except Exception as ex:
+                    self.page_ref.overlay.append(
+                        ft.SnackBar(ft.Text(f"Error switching branch: {ex}"), open=True)
+                    )
+                    self.page_ref.update()
+
+        branch_dropdown = ft.Dropdown(
+            width=200,
+            text_size=14,
+            content_padding=ft.Padding(10, 0, 10, 0),
+            options=branch_options,
+            value=branches[0] if branches else None,
+            border_color=ft.Colors.TRANSPARENT,
+            bgcolor=ft.Colors.GREY_800,
+            color=ft.Colors.WHITE,
+            border_radius=5,
+            leading_icon=ft.Icons.ACCOUNT_TREE_OUTLINED,
+            tooltip="Select Branch",
+        )
+        branch_dropdown.on_change = on_branch_change
+        return branch_dropdown
+
+    def refresh_branches(self):
+        """Refresh the branch list in the dropdown."""
+        pm = ProjectManager(self.working_directory)
+        session = getattr(self.page_ref, "session", None)
+        active_project_id = None
+        if session:
+            store = getattr(session, "store", session)
+            active_project_id = store.get("current_project_id")
+
+        branches = []
+        if active_project_id:
+            try:
+                branches = pm.list_branches(active_project_id)
+            except Exception:
+                pass
+
+        self.branch_dropdown.options = [ft.dropdown.Option(b) for b in branches]
+        self.branch_dropdown.value = branches[0] if branches else None
+        self.branch_dropdown.update()
 
     def _toggle_theme(self, e):
         new_mode = (
@@ -213,23 +287,7 @@ class Toolbar(ft.Container):
     def _build_content(self):
         # Left: Icon, Name, Project Dropdown, Workspace Dropdown
         self.project_dropdown = self._build_project_dropdown()
-
-        workspace_dropdown = ft.Dropdown(
-            width=200,
-            text_size=14,
-            content_padding=ft.Padding(10, 0, 10, 0),
-            value="main",
-            options=[
-                ft.dropdown.Option("main"),
-                ft.dropdown.Option("dev"),
-                ft.dropdown.Option("test"),
-                ft.dropdown.Option("+ Add New Workspace"),
-            ],
-            border_color=ft.Colors.TRANSPARENT,
-            bgcolor=ft.Colors.GREY_800,
-            color=ft.Colors.WHITE,
-            border_radius=5,
-        )
+        self.branch_dropdown = self._build_branch_dropdown()
 
         left_section = ft.Row(
             controls=[
@@ -245,7 +303,7 @@ class Toolbar(ft.Container):
                 ft.Container(width=10),
                 self.project_dropdown,
                 ft.Container(width=10),
-                workspace_dropdown,
+                self.branch_dropdown,
             ],
             alignment=ft.MainAxisAlignment.START,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,

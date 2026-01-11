@@ -111,12 +111,42 @@ class HomeDomainPage(ft.Row):
                                     subtitle=ft.Column(
                                         [
                                             ft.Text(str(p.path), size=12),
-                                            ft.Text(
-                                                f"Git Status: {p.git_status}"
-                                                if p.git_status
-                                                else "No git status",
-                                                size=10,
-                                                italic=True,
+                                            ft.Row(
+                                                [
+                                                    ft.Icon(
+                                                        ft.Icons.CHECK_CIRCLE_OUTLINE
+                                                        if p.git_status == "clean"
+                                                        else ft.Icons.ERROR_OUTLINE,
+                                                        size=14,
+                                                        color=ft.Colors.GREEN
+                                                        if p.git_status == "clean"
+                                                        else ft.Colors.AMBER,
+                                                    )
+                                                    if p.is_git
+                                                    else ft.Container(),
+                                                    ft.Text(
+                                                        f"Git: {p.git_status}"
+                                                        if p.is_git
+                                                        else "Not a git repo",
+                                                        size=10,
+                                                        italic=True,
+                                                    ),
+                                                    ft.Container(width=15),
+                                                    ft.Icon(
+                                                        ft.Icons.ACCOUNT_TREE_OUTLINED,
+                                                        size=14,
+                                                        color=ft.Colors.GREY_400,
+                                                    )
+                                                    if p.branches
+                                                    else ft.Container(),
+                                                    ft.Text(
+                                                        f"Branches: {', '.join(p.branches)}"
+                                                        if p.branches
+                                                        else "No branches",
+                                                        size=10,
+                                                        color=ft.Colors.GREY_400,
+                                                    ),
+                                                ]
                                             ),
                                         ]
                                     ),
