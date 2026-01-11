@@ -68,7 +68,6 @@ class HomeDomainPage(ft.Row):
 
     def _build_project_view(self):
         projects = self.pm.get_all_projects()
-        is_workspace_initialized = (self.working_directory / "engn.toml").exists()
 
         project_cards = []
         for p in projects:
@@ -134,12 +133,6 @@ class HomeDomainPage(ft.Row):
                             on_click=lambda _: (self._update_view(), self.update()),
                         ),
                         ft.Container(expand=True),
-                        ft.FilledButton(
-                            content="Initialize Workspace",
-                            icon=ft.Icons.ROCKET_LAUNCH,
-                            visible=not is_workspace_initialized,
-                            on_click=self._initialize_workspace,
-                        ),
                         ft.FilledButton(
                             content="New Project",
                             icon=ft.Icons.ADD,
@@ -315,23 +308,6 @@ class HomeDomainPage(ft.Row):
         except Exception as ex:
             self.page_ref.overlay.append(
                 ft.SnackBar(ft.Text(f"Error initializing project: {ex}"), open=True)
-            )
-            self.page_ref.update()
-
-    def _initialize_workspace(self, e):
-        try:
-            self.pm.initialize_workspace()
-            self.page_ref.overlay.append(
-                ft.SnackBar(
-                    ft.Text("Workspace initialized successfully"),
-                    open=True,
-                )
-            )
-            self._update_view()
-            self.update()
-        except Exception as ex:
-            self.page_ref.overlay.append(
-                ft.SnackBar(ft.Text(f"Error initializing workspace: {ex}"), open=True)
             )
             self.page_ref.update()
 

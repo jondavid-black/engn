@@ -27,16 +27,3 @@ def test_initialize_project(tmp_path):
 
     projects = pm.get_all_projects()
     assert projects[0].is_initialized
-
-
-def test_initialize_workspace(tmp_path):
-    pm = ProjectManager(tmp_path)
-
-    # Initialize workspace
-    pm.initialize_workspace()
-
-    # Verify initialized
-    assert (tmp_path / "engn.toml").exists()
-    assert (tmp_path / "arch").exists()
-    assert (tmp_path / "pm").exists()
-    assert (tmp_path / "ux").exists()

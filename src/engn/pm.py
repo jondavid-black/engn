@@ -79,32 +79,6 @@ class ProjectManager:
                 # Beads might already be initialized or other error
                 pass
 
-    def initialize_workspace(self) -> None:
-        """
-        Initialize the working directory with engn structure.
-        """
-        # Create directories
-        for dir_name in ["arch", "pm", "ux"]:
-            (self.working_directory / dir_name).mkdir(exist_ok=True)
-
-        # Create engn.toml
-        config_path = self.working_directory / "engn.toml"
-        if not config_path.exists():
-            with open(config_path, "w") as f:
-                f.write('arch_path = "arch"\n')
-                f.write('pm_path = "pm"\n')
-                f.write('ux_path = "ux"\n')
-
-        # Initialize beads if installed
-        import subprocess
-
-        if shutil.which("bd"):
-            try:
-                subprocess.run(["bd", "init"], cwd=self.working_directory, check=True)
-            except subprocess.CalledProcessError:
-                # Beads might already be initialized or other error
-                pass
-
     def create_project(self, repo_url: str) -> None:
         """
         Create a new project by cloning a git repository.
