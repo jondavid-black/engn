@@ -2,10 +2,13 @@ import argparse
 import sys
 from pathlib import Path
 
+from typing import Any
+
 import flet as ft
 from engn.utils import get_version
 from engn.config import ProjectConfig
-from sysengn.auth import Authenticator
+from engn.core.auth import get_oauth_providers, User as EngnUser
+from sysengn.auth import Authenticator, User as SysEngnUser
 from sysengn.views import LoginView
 from sysengn.components import (
     Toolbar,
@@ -23,12 +26,16 @@ class MainApp:
         self,
         page: ft.Page,
         config: ProjectConfig,
+        user: EngnUser | SysEngnUser | None = None,
         authenticator: Authenticator | None = None,
     ):
         self.page = page
         self.config = config
-        self.authenticator = authenticator or Authenticator(config)
-        self.user = self.authenticator.get_current_user()
+        if user:
+            self.user = user
+        else:
+            self.authenticator = authenticator or Authenticator(config)
+            self.user = self.authenticator.get_current_user()
         self.current_view_index = 0
 
         # Create domain views
@@ -43,7 +50,7 @@ class MainApp:
         logo_path = str("engn_logo_core_tiny_transparent.png")
         self.toolbar = Toolbar(
             page=page,
-            user=self.user,
+            user=self.user,  # type: ignore
             logo_path=logo_path,
             on_tab_change=self._on_tab_change,
             tabs=["Home", "MBSE", "UX", "Docs"],
@@ -99,21 +106,53 @@ def flet_main(page: ft.Page):
     page.padding = 0
 
     config = ProjectConfig.load(Path.cwd())
-    authenticator = Authenticator(config)
 
     def show_main_app():
         page.clean()
-        app = MainApp(page, config, authenticator)
+        store: Any = getattr(page.session, "store", page.session)
+        user = store.get("user")
+        app = MainApp(page, config, user=user)
         page.add(app.build())
         page.update()
 
-    # Check if auth is configured
-    if config.auth and config.auth.username and config.auth.password_hash:
-        page.add(LoginView(page, authenticator, show_main_app))
+    def on_login(e):
+        if e.error:
+            page.overlay.append(
+                ft.SnackBar(ft.Text(f"Login error: {e.error}"), open=True)
+            )
+        else:
+            # Successful OAuth login
+            # Extract user info from page.auth
+            auth: Any = getattr(page, "auth", None)
+            user_data = getattr(auth, "user", {}) if auth else {}
+            user = EngnUser(
+                id=user_data.get("id") or user_data.get("sub") or "oauth",
+                email=user_data.get("email") or "unknown",
+                name=user_data.get("name") or "OAuth User",
+            )
+            store: Any = getattr(page.session, "store", page.session)
+            store.set("user", user)
+            show_main_app()
+        page.update()
+
+    page.on_login = on_login
+
+    providers = get_oauth_providers()
+
+    # If already logged in, show main app
+    store: Any = getattr(page.session, "store", page.session)
+    if store.get("user"):
+        show_main_app()
     else:
-        # If no auth configured, go straight to main page
-        app = MainApp(page, config, authenticator)
-        page.add(app.build())
+        page.add(
+            LoginView(
+                page,
+                on_login_success=show_main_app,
+                icon="images/sysengn_logo.png",
+                app_name="SysEngn",
+                oauth_providers=providers,
+            )
+        )
 
 
 def main() -> None:

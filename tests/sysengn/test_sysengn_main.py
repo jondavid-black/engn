@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from sysengn.main import main, flet_main
+from sysengn.views import LoginView
 from engn.utils import get_version
 import flet as ft
 
@@ -21,8 +22,39 @@ def test_sysengn_flet_startup():
             mock_app.assert_called_once()
 
 
-def test_flet_main():
+def test_flet_main_login_flow():
     mock_page = MagicMock(spec=ft.Page)
-    flet_main(mock_page)
-    assert mock_page.title == "SysEngn"
-    mock_page.add.assert_called()
+    mock_page.session = MagicMock()
+    # Mock store
+    mock_store = MagicMock()
+    mock_page.session.store = mock_store
+    mock_store.get.return_value = None  # Not logged in
+
+    with patch("sysengn.main.ProjectConfig.load") as mock_load:
+        mock_config = MagicMock()
+        mock_load.return_value = mock_config
+
+        flet_main(mock_page)
+
+        # Should have added LoginView
+        mock_page.add.assert_called()
+        args, kwargs = mock_page.add.call_args
+        assert isinstance(args[0], LoginView)
+
+
+def test_flet_main_already_logged_in():
+    mock_page = MagicMock(spec=ft.Page)
+    mock_page.session = MagicMock()
+    mock_store = MagicMock()
+    mock_page.session.store = mock_store
+    mock_store.get.return_value = MagicMock()  # Already logged in
+
+    with patch("sysengn.main.ProjectConfig.load") as mock_load:
+        mock_config = MagicMock()
+        mock_load.return_value = mock_config
+
+        with patch("sysengn.main.MainApp") as mock_app_cls:
+            flet_main(mock_page)
+
+            # Should show main app directly
+            mock_app_cls.assert_called_once()
