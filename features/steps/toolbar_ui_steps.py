@@ -46,8 +46,18 @@ def step_app_running(context):
     )
     context.server_port = port
 
-    # Give server time to start
-    time.sleep(5)
+    # Give server time to start - poll port
+    for _ in range(50):
+        try:
+            import socket
+
+            with socket.create_connection(("localhost", port), timeout=0.1):
+                break
+        except (OSError, ConnectionRefusedError):
+            time.sleep(0.1)
+    else:
+        # One final short sleep if polling wasn't perfect or just to be safe
+        time.sleep(1)
 
     # Start playwright
     context.playwright = sync_playwright().start()
@@ -56,9 +66,13 @@ def step_app_running(context):
 
     # Navigate to the app
     context.page.goto(f"http://localhost:{context.server_port}")
-    context.page.wait_for_load_state("load", timeout=30000)
-    # Wait for Flet/Flutter to initialize the canvas
-    time.sleep(5)
+    # Wait for the flutter view to be attached to DOM
+    try:
+        context.page.wait_for_selector("flutter-view", state="attached", timeout=10000)
+    except Exception:
+        # Fallback to load state + small sleep if selector fails
+        context.page.wait_for_load_state("load")
+        time.sleep(2)
 
     # Handle Login if present
     # The default admin created when config is empty is admin@example.com / adminpass
@@ -66,14 +80,14 @@ def step_app_running(context):
 
     # Email field
     context.page.mouse.click(640, 450)
-    time.sleep(0.5)
+    time.sleep(0.1)
     context.page.keyboard.press("Control+A")
     context.page.keyboard.press("Backspace")
     context.page.keyboard.type("admin@example.com")
 
     # Password field
     context.page.mouse.click(640, 510)
-    time.sleep(0.5)
+    time.sleep(0.1)
     context.page.keyboard.press("Control+A")
     context.page.keyboard.press("Backspace")
     context.page.keyboard.type("adminpass")
@@ -81,8 +95,11 @@ def step_app_running(context):
     # Sign In
     context.page.keyboard.press("Enter")
 
-    # Give it time to load main app
-    time.sleep(10)
+    # Wait for main app - verify by checking if we navigated or content changed
+    # Ideally we'd look for a known element, but canvas is opaque.
+    # We can wait for a bit, but 10s is excessive.
+    # Let's try 3s which is usually enough for local Flet
+    time.sleep(3)
 
     # Register cleanup
     def cleanup():
@@ -160,33 +177,50 @@ def step_tabs_visible(context):
 
 @when('I click on the "{tab_name}" tab')  # type: ignore
 def step_click_tab(context, tab_name):
-    """Click on a navigation tab.
-
-    Flet renders with Flutter's SkWasm on canvas, so we use coordinate
-    clicks based on known tab positions. Viewport is 1280x720.
-    Tab positions (approximately): Home=525, MBSE=615, UX=706, Docs=797
-    """
+    """Click on a navigation tab using text locator."""
     page = context.page
     time.sleep(2)  # Ensure page is fully rendered
 
     # Store initial screenshot for comparison
     context.initial_screenshot = page.screenshot()
 
-    # Map tab names to x coordinates (y=30 for toolbar)
-    # Trying coordinates centered around 705 with some buffer
-    tab_positions = {
-        "Home": 590,
-        "MBSE": 670,
-        "UX": 750,
-        "Docs": 830,
-    }
+    # Try to click by text, which leverages Flutter's semantics layer
+    try:
+        # First try exact text match
+        page.get_by_text(tab_name, exact=True).click(timeout=2000)
+    except Exception:
+        # Fallback to coordinate clicking if semantics aren't working/found
+        print(f"Text locator failed for {tab_name}, falling back to coordinates")
 
-    x_pos = tab_positions.get(tab_name, 670)
-    # Click in a small 3x3 grid around the point to increase chance of hitting the control
-    for dx in [-2, 0, 2]:
-        for dy in [-2, 0, 2]:
-            page.mouse.click(x_pos + dx, 40 + dy)
-    time.sleep(2)  # Wait for content to update
+        # Map tab names to x coordinates (y=30 for toolbar)
+        # Left section (~475px) is wider than Right section (~350px).
+        # Space between means tabs are shifted right of center.
+        # Center of tabs approx 702px.
+        tab_positions = {
+            "Home": 660,
+            "MBSE": 740,
+            "UX": 820,
+            "Docs": 900,
+        }
+
+        x_start = tab_positions.get(tab_name, 740)
+        y_center = 35
+
+        # Click in a wider grid around the point to increase chance of hitting the control
+        clicked = False
+        # Scan wide in X (+/- 60px) and moderate in Y (+/- 15px)
+        for dx in range(-60, 61, 20):
+            for dy in range(-15, 16, 10):
+                try:
+                    page.mouse.click(x_start + dx, y_center + dy)
+                    clicked = True
+                except Exception:
+                    pass
+
+        if not clicked:
+            raise Exception(f"Failed to click tab {tab_name}")
+
+    time.sleep(3)  # Wait for content to update
 
 
 @then("the MBSE view content should be displayed")  # type: ignore

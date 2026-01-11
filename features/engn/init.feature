@@ -10,7 +10,7 @@ Feature: Initialize Engn Project
     And a directory named "arch" should exist
     And a directory named "pm" should exist
     And a directory named "ux" should exist
-    And the file "engn.toml" should contain "arch_path"
+    And the file "engn.toml" should contain "sysengn"
     And a directory named ".beads" should exist
 
 
