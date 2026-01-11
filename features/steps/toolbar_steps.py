@@ -67,14 +67,16 @@ def step_toolbar_has_tabs(context, count):
     tabs_component = context.toolbar.tabs
     assert tabs_component is not None, "Toolbar should have tabs attribute"
 
-    # SegmentedButton uses segments, TabBar uses tabs
-    if hasattr(tabs_component, "segments"):
+    # Custom Row of containers, SegmentedButton uses segments, TabBar uses tabs
+    if hasattr(tabs_component, "controls"):
+        actual_count = len(tabs_component.controls)
+    elif hasattr(tabs_component, "segments"):
         actual_count = len(tabs_component.segments)
     elif hasattr(tabs_component, "tabs"):
         actual_count = len(tabs_component.tabs)
     else:
         raise AssertionError(
-            f"Tabs component {type(tabs_component).__name__} has no segments or tabs"
+            f"Tabs component {type(tabs_component).__name__} has no controls, segments or tabs"
         )
 
     assert actual_count == count, f"Expected {count} tabs, got {actual_count}"
@@ -86,9 +88,15 @@ def step_tabs_have_labels(context, labels):
     expected_labels = [label.strip() for label in labels.split(",")]
     tabs_component = context.toolbar.tabs
 
+    # Custom Row: containers with Text content
     # SegmentedButton: segments have value attribute
     # TabBar: tabs have label attribute
-    if hasattr(tabs_component, "segments"):
+    if hasattr(tabs_component, "controls"):
+        actual_labels = []
+        for container in tabs_component.controls:
+            if hasattr(container, "content") and hasattr(container.content, "value"):
+                actual_labels.append(container.content.value)
+    elif hasattr(tabs_component, "segments"):
         actual_labels = [seg.value for seg in tabs_component.segments]
     elif hasattr(tabs_component, "tabs"):
         actual_labels = [tab.label for tab in tabs_component.tabs]
@@ -103,21 +111,8 @@ def step_tabs_have_labels(context, labels):
 @when("I simulate selecting tab index {index:d}")  # type: ignore
 def step_select_tab(context, index):
     """Simulate a tab selection event."""
-    tabs_component = context.toolbar.tabs
-    tab_labels = context.toolbar.tab_labels
-
-    # Create a mock event
-    mock_event = MagicMock()
-    mock_event.control = tabs_component
-
-    # For SegmentedButton, selected is a list of values
-    if hasattr(tabs_component, "segments"):
-        mock_event.control.selected = [tab_labels[index]]
-    else:
-        mock_event.control.selected_index = index
-
-    # Trigger the handler
-    context.toolbar._handle_tab_change(mock_event)
+    # For custom tabs, directly call the click handler
+    context.toolbar._handle_tab_click(index)
 
 
 @then("the tab change callback should be invoked with index {index:d}")  # type: ignore
