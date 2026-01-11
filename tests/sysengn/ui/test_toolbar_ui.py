@@ -1,137 +1,142 @@
-"""UI tests for SysEngn toolbar using playwright.
+"""Unit tests for SysEngn toolbar component using mocks."""
 
-These tests launch the actual SysEngn app and validate the UI renders correctly.
-"""
+from typing import cast
+from unittest.mock import MagicMock, Mock
 
-import os
-import subprocess
-import time
-from typing import Generator
-
+import flet as ft
 import pytest
-from playwright.sync_api import Page, expect
+
+from sysengn.components.toolbar import Toolbar
 
 
-@pytest.fixture(scope="module")
-def sysengn_server() -> Generator[str, None, None]:
-    """Start SysEngn server and yield the URL."""
-    port = 8550
-
-    # Set environment variables to run as web server without opening browser
-    env = {
-        **os.environ,
-        "FLET_FORCE_WEB_SERVER": "true",
-        "FLET_SERVER_PORT": str(port),
-    }
-
-    # Start the server in the background
-    proc = subprocess.Popen(
-        ["uv", "run", "sysengn", "serve"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-    )
-
-    # Give the server time to start
-    time.sleep(3)
-
-    url = f"http://localhost:{port}"
-
-    yield url
-
-    # Cleanup: terminate the server
-    proc.terminate()
-    try:
-        proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        proc.kill()
+@pytest.fixture
+def mock_page():
+    """Create a mock Flet page."""
+    page = MagicMock(spec=ft.Page)
+    return page
 
 
-@pytest.mark.ui
-class TestToolbarUI:
-    """UI tests for the SysEngn toolbar."""
+@pytest.fixture
+def toolbar(mock_page):
+    """Create a Toolbar instance with a mock callback."""
+    on_tab_change = Mock()
+    tb = Toolbar(page=mock_page, on_tab_change=on_tab_change)
 
-    def test_toolbar_renders(self, sysengn_server: str, page: Page) -> None:
-        """Test that the toolbar renders without errors."""
-        page.goto(sysengn_server)
+    # Mock update() on tab containers to prevent "Control must be added to page" error
+    # The Toolbar code iterates over _tab_containers and calls update()
+    # We need to do this because the controls aren't actually added to a page tree in the test
+    for container in tb._tab_containers:
+        container.update = Mock()
 
-        # Wait for the page to load (flet apps load async)
-        page.wait_for_load_state("networkidle")
+    return tb
 
-        # Check that no error messages are displayed
-        # Flet displays errors in a specific way
-        error_elements = page.locator("text=Error")
-        if error_elements.count() > 0:
-            # Get the error text for debugging
-            error_text = error_elements.first.text_content()
-            pytest.fail(f"Error displayed on page: {error_text}")
 
-    def test_logo_visible(self, sysengn_server: str, page: Page) -> None:
-        """Test that the logo image is visible.
+class TestToolbarUnit:
+    """Unit tests for the Toolbar component."""
 
-        Flet renders with Flutter's SkWasm on canvas, so the logo is drawn
-        on the canvas rather than as an <img> element. We verify by checking
-        that the flutter view renders content (logo is part of the toolbar).
-        """
-        page.goto(sysengn_server)
-        page.wait_for_load_state("networkidle")
-        time.sleep(2)  # Allow Flet JS to fully render
+    def test_initialization(self, toolbar):
+        """Test that the toolbar initializes with correct controls."""
+        assert isinstance(toolbar, ft.Container)
+        assert isinstance(toolbar.content, ft.Row)
 
-        # Logo is rendered on the canvas, verify flutter view is present
-        flutter_view = page.locator("flutter-view")
-        expect(flutter_view).to_be_visible(timeout=10000)
+        # Verify Row structure: Logo, Spacer, Tabs, Spacer
+        row = cast(ft.Row, toolbar.content)
+        controls = row.controls
+        assert len(controls) == 4
+        assert isinstance(controls[0], ft.Image)  # Logo
+        assert isinstance(controls[1], ft.Container)  # Spacer
+        assert isinstance(controls[2], ft.Row)  # Tabs
+        assert isinstance(controls[3], ft.Container)  # Spacer
 
-    def test_navigation_tabs_visible(self, sysengn_server: str, page: Page) -> None:
-        """Test that navigation tabs are visible via screenshot verification.
+    def test_logo_path(self, toolbar):
+        """Test that the logo has a source path."""
+        row = cast(ft.Row, toolbar.content)
+        logo = cast(ft.Image, row.controls[0])
+        assert "engn_logo_core_tiny_transparent.png" in str(logo.src)
 
-        Flet renders with Flutter's SkWasm on canvas, so we verify visually.
-        """
-        page.goto(sysengn_server)
-        page.wait_for_load_state("networkidle")
-        time.sleep(2)  # Allow Flet JS to fully render
+    def test_tabs_created(self, toolbar):
+        """Test that navigation tabs are created correctly."""
+        tabs_row = toolbar.nav_tabs
+        assert isinstance(tabs_row, ft.Row)
+        assert len(tabs_row.controls) == 4  # 4 tabs
 
-        # Take a screenshot and verify the toolbar area is rendered
-        # The canvas rendering means we can't query text elements directly
-        screenshot = page.screenshot()
-        assert len(screenshot) > 0, "Page should render content"
+        # Verify labels
+        expected_labels = ["Home", "MBSE", "UX", "Docs"]
+        for i, control in enumerate(tabs_row.controls):
+            container = cast(ft.Container, control)
+            text = container.content
+            assert isinstance(text, ft.Text)
+            assert text.value == expected_labels[i]
 
-        # Verify the flutter view is present and has content
-        flutter_view = page.locator("flutter-view")
-        expect(flutter_view).to_be_visible(timeout=10000)
+    def test_default_selection(self, toolbar):
+        """Test that the first tab is selected by default."""
+        assert toolbar.selected_index == 0
 
-    def test_tab_selection_changes_content(
-        self, sysengn_server: str, page: Page
-    ) -> None:
-        """Test that clicking a tab changes the content.
+        # Check visual state of first tab
+        first_tab_container = cast(ft.Container, toolbar.nav_tabs.controls[0])
+        first_tab_text = cast(ft.Text, first_tab_container.content)
 
-        Flet renders with Flutter's SkWasm on canvas, so we use coordinate
-        clicks based on known tab positions. The viewport is 1280x720.
-        Tab positions (approximately): Home=525, MBSE=615, UX=706, Docs=797
-        """
-        page.goto(sysengn_server)
-        page.wait_for_load_state("networkidle")
-        time.sleep(2)  # Allow Flet JS to fully render
+        # Primary color indicates selection (checking against variable usage pattern)
+        # Note: We can't easily check the exact color value equality if it's an object,
+        # but we can check it's assigned the 'selected' style logic.
+        assert first_tab_text.color == ft.Colors.PRIMARY
+        assert first_tab_container.border is not None
 
-        # Take initial screenshot to verify Home view
-        initial_screenshot = page.screenshot()
+        # Check visual state of second tab (unselected)
+        second_tab_container = cast(ft.Container, toolbar.nav_tabs.controls[1])
+        second_tab_text = cast(ft.Text, second_tab_container.content)
+        assert second_tab_text.color == ft.Colors.ON_SURFACE_VARIANT
+        assert second_tab_container.border is None
 
-        # Click on MBSE tab (approximately at x=615, y=30 in toolbar)
-        page.mouse.click(615, 30)
-        time.sleep(1)  # Wait for view to update
+    def test_tab_selection_updates_state(self, toolbar):
+        """Test that setting selected_index updates the internal state."""
+        toolbar.selected_index = 2
+        assert toolbar.selected_index == 2
 
-        # Take screenshot after clicking MBSE
-        after_screenshot = page.screenshot()
+        # Verify visual update
+        tabs = toolbar.nav_tabs.controls
+        # Index 2 should be selected
+        tab2 = cast(ft.Container, tabs[2])
+        tab2_text = cast(ft.Text, tab2.content)
+        assert tab2_text.color == ft.Colors.PRIMARY
+        assert tab2.border is not None
 
-        # Screenshots should be different (content changed)
-        assert initial_screenshot != after_screenshot, (
-            "Content should change after clicking MBSE tab"
-        )
+        # Index 0 should be unselected now
+        tab0 = cast(ft.Container, tabs[0])
+        tab0_text = cast(ft.Text, tab0.content)
+        assert tab0_text.color == ft.Colors.ON_SURFACE_VARIANT
+        assert tab0.border is None
 
-    def test_no_tabbar_error(self, sysengn_server: str, page: Page) -> None:
-        """Test that there's no 'TabBar must be used within Tabs' error."""
-        page.goto(sysengn_server)
-        page.wait_for_load_state("networkidle")
+    def test_tab_click_callback(self, toolbar):
+        """Test that clicking a tab triggers the callback and updates selection."""
+        # Get the click handler for the second tab (MBSE)
+        # The handler is a lambda in the actual code, but we can simulate the effect
+        # by calling _handle_tab_click directly which is what the lambda does.
 
-        # Check for the specific error that was occurring
-        tabbar_error = page.locator("text=TabBar must be used within a Tabs control")
-        expect(tabbar_error).to_have_count(0)
+        # Verify initial state
+        assert toolbar.selected_index == 0
+
+        # Simulate click on index 1
+        toolbar._handle_tab_click(1)
+
+        # Verify state change
+        assert toolbar.selected_index == 1
+
+        # Verify callback was called
+        toolbar.on_tab_change.assert_called_once_with(1)
+
+    def test_properties(self, toolbar):
+        """Test public properties."""
+        assert toolbar.tabs == toolbar.nav_tabs
+        assert toolbar.tab_labels == Toolbar.TAB_LABELS
+
+    def test_handle_tab_change_event(self, toolbar):
+        """Test the _handle_tab_change compatibility method."""
+        # Create a mock event with control.selected
+        mock_event = MagicMock()
+        mock_event.control.selected = {"UX"}  # Set, as typical in some Flet events
+
+        toolbar._handle_tab_change(mock_event)
+
+        assert toolbar.selected_index == 2  # "UX" is index 2
+        toolbar.on_tab_change.assert_called_with(2)

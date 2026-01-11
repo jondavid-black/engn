@@ -33,6 +33,12 @@ def step_toolbar_initialized(context):
         on_tab_change=on_tab_change,
     )
 
+    # Mock update() on tab containers to prevent "Control must be added to page" error
+    # since these BDD tests run in a mock environment without a real page hierarchy
+    if hasattr(context.toolbar, "_tab_containers"):
+        for container in context.toolbar._tab_containers:
+            container.update = MagicMock()
+
 
 @then("the toolbar should contain a logo image")  # type: ignore
 def step_toolbar_has_logo(context):
