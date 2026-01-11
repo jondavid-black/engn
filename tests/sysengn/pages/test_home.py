@@ -43,6 +43,11 @@ def home_page(mock_page, mock_user):
         p1.is_beads = True
         p1.is_initialized = True
         p1.git_status = "clean"
+        p1.git_untracked = 0
+        p1.git_modified = 0
+        p1.beads_features = 1
+        p1.beads_bugs = 2
+        p1.beads_tasks = 3
         p1.branches = ["main", "dev"]
 
         p2 = Mock()
@@ -52,6 +57,11 @@ def home_page(mock_page, mock_user):
         p2.is_beads = False
         p2.is_initialized = False
         p2.git_status = ""
+        p2.git_untracked = 0
+        p2.git_modified = 0
+        p2.beads_features = 0
+        p2.beads_bugs = 0
+        p2.beads_tasks = 0
         p2.branches = []
 
         mock_pm.get_all_projects.return_value = [p1, p2]

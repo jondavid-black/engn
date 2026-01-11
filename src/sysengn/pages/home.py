@@ -125,28 +125,67 @@ class HomeDomainPage(ft.Row):
                                                     if p.is_git
                                                     else ft.Container(),
                                                     ft.Text(
-                                                        f"Git: {p.git_status}"
+                                                        "Clean"
+                                                        if p.git_status == "clean"
+                                                        else f"{p.git_modified} modified, {p.git_untracked} untracked"
                                                         if p.is_git
                                                         else "Not a git repo",
                                                         size=10,
-                                                        italic=True,
+                                                        color=ft.Colors.GREEN
+                                                        if p.git_status == "clean"
+                                                        else ft.Colors.AMBER
+                                                        if p.is_git
+                                                        else ft.Colors.GREY_400,
                                                     ),
-                                                    ft.Container(width=15),
+                                                    ft.Container(width=15)
+                                                    if p.is_beads
+                                                    else ft.Container(),
                                                     ft.Icon(
-                                                        ft.Icons.ACCOUNT_TREE_OUTLINED,
+                                                        ft.Icons.BUG_REPORT_OUTLINED,
                                                         size=14,
-                                                        color=ft.Colors.GREY_400,
+                                                        color=ft.Colors.RED_300,
                                                     )
-                                                    if p.branches
+                                                    if p.is_beads and p.beads_bugs > 0
                                                     else ft.Container(),
                                                     ft.Text(
-                                                        f"Branches: {', '.join(p.branches)}"
-                                                        if p.branches
-                                                        else "No branches",
+                                                        f"{p.beads_bugs}",
                                                         size=10,
-                                                        color=ft.Colors.GREY_400,
-                                                    ),
-                                                ]
+                                                        color=ft.Colors.RED_300,
+                                                    )
+                                                    if p.is_beads and p.beads_bugs > 0
+                                                    else ft.Container(),
+                                                    ft.Icon(
+                                                        ft.Icons.LIGHTBULB_OUTLINED,
+                                                        size=14,
+                                                        color=ft.Colors.BLUE_300,
+                                                    )
+                                                    if p.is_beads
+                                                    and p.beads_features > 0
+                                                    else ft.Container(),
+                                                    ft.Text(
+                                                        f"{p.beads_features}",
+                                                        size=10,
+                                                        color=ft.Colors.BLUE_300,
+                                                    )
+                                                    if p.is_beads
+                                                    and p.beads_features > 0
+                                                    else ft.Container(),
+                                                    ft.Icon(
+                                                        ft.Icons.TASK_OUTLINED,
+                                                        size=14,
+                                                        color=ft.Colors.GREEN_300,
+                                                    )
+                                                    if p.is_beads and p.beads_tasks > 0
+                                                    else ft.Container(),
+                                                    ft.Text(
+                                                        f"{p.beads_tasks}",
+                                                        size=10,
+                                                        color=ft.Colors.GREEN_300,
+                                                    )
+                                                    if p.is_beads and p.beads_tasks > 0
+                                                    else ft.Container(),
+                                                ],
+                                                spacing=5,
                                             ),
                                         ]
                                     ),

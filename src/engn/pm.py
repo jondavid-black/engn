@@ -1,3 +1,5 @@
+import json
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +18,11 @@ class Project:
     is_git: bool = False
     is_beads: bool = False
     git_status: str = ""
+    git_untracked: int = 0
+    git_modified: int = 0
+    beads_features: int = 0
+    beads_bugs: int = 0
+    beads_tasks: int = 0
     branches: list[str] | None = None
 
     def __post_init__(self):
@@ -47,6 +54,18 @@ class ProjectManager:
                     branches = self.list_branches(name)
                 except Exception:
                     pass
+
+            beads_features = 0
+            beads_bugs = 0
+            beads_tasks = 0
+            if status["is_beads"]:
+                try:
+                    beads_features, beads_bugs, beads_tasks = self._get_beads_counts(
+                        name
+                    )
+                except Exception:
+                    pass
+
             projects.append(
                 Project(
                     id=name,
@@ -56,6 +75,11 @@ class ProjectManager:
                     is_git=status["is_git"],
                     is_beads=status["is_beads"],
                     git_status=status.get("git_status", ""),
+                    git_untracked=status.get("git_untracked", 0),
+                    git_modified=status.get("git_modified", 0),
+                    beads_features=beads_features,
+                    beads_bugs=beads_bugs,
+                    beads_tasks=beads_tasks,
                     branches=branches,
                 )
             )
@@ -142,3 +166,22 @@ class ProjectManager:
             return git.Repo(project_path)
         except exc.InvalidGitRepositoryError:
             raise ValueError(f"Project '{project_name}' is not a git repository")
+
+    def _get_beads_counts(self, project_name: str) -> tuple[int, int, int]:
+        """Get counts of open beads issues by type (features, bugs, tasks)."""
+        project_path = self.working_directory / project_name
+        result = subprocess.run(
+            ["bd", "list", "--status=open", "--json"],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return 0, 0, 0
+
+        issues = json.loads(result.stdout)
+        features = sum(1 for i in issues if i.get("issue_type") == "feature")
+        bugs = sum(1 for i in issues if i.get("issue_type") == "bug")
+        tasks = sum(1 for i in issues if i.get("issue_type") == "task")
+        return features, bugs, tasks

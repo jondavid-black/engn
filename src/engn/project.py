@@ -149,8 +149,21 @@ def get_project_status(name: str, working_dir: Path) -> Dict[str, Any]:
                 text=True,
                 check=False,
             )
-            status["git_status"] = result.stdout.strip() or "clean"
+            output = result.stdout.strip()
+            if not output:
+                status["git_status"] = "clean"
+                status["git_untracked"] = 0
+                status["git_modified"] = 0
+            else:
+                lines = output.split("\n")
+                untracked = sum(1 for line in lines if line.startswith("??"))
+                modified = len(lines) - untracked
+                status["git_status"] = "changes"
+                status["git_untracked"] = untracked
+                status["git_modified"] = modified
         except Exception:
             status["git_status"] = "unknown"
+            status["git_untracked"] = 0
+            status["git_modified"] = 0
 
     return status
