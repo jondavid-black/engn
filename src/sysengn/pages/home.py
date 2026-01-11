@@ -68,6 +68,7 @@ class HomeDomainPage(ft.Row):
 
     def _build_project_view(self):
         projects = self.pm.get_all_projects()
+        is_workspace_initialized = (self.working_directory / "engn.toml").exists()
 
         project_cards = []
         for p in projects:
@@ -97,6 +98,15 @@ class HomeDomainPage(ft.Row):
                                                 ),
                                             ),
                                             ft.IconButton(
+                                                icon=ft.Icons.PLAY_ARROW_OUTLINED,
+                                                tooltip="Initialize project",
+                                                visible=not p.is_initialized,
+                                                on_click=lambda e,
+                                                name=p.name: self._initialize_project(
+                                                    name
+                                                ),
+                                            ),
+                                            ft.IconButton(
                                                 icon=ft.Icons.DELETE_OUTLINE,
                                                 tooltip="Delete project",
                                                 on_click=lambda e,
@@ -119,6 +129,12 @@ class HomeDomainPage(ft.Row):
                     [
                         ft.Text("Projects", size=30, weight=ft.FontWeight.BOLD),
                         ft.Container(expand=True),
+                        ft.ElevatedButton(
+                            content="Initialize Workspace",
+                            icon=ft.Icons.ROCKET_LAUNCH,
+                            visible=not is_workspace_initialized,
+                            on_click=self._initialize_workspace,
+                        ),
                         ft.ElevatedButton(
                             content="New Project",
                             icon=ft.Icons.ADD,
@@ -279,6 +295,40 @@ class HomeDomainPage(ft.Row):
         self.page_ref.overlay.append(dialog)
         dialog.open = True
         self.page_ref.update()
+
+    def _initialize_project(self, project_name: str):
+        try:
+            self.pm.initialize_project(project_name)
+            self.page_ref.overlay.append(
+                ft.SnackBar(
+                    ft.Text(f"Project '{project_name}' initialized successfully"),
+                    open=True,
+                )
+            )
+            self._update_view()
+            self.update()
+        except Exception as ex:
+            self.page_ref.overlay.append(
+                ft.SnackBar(ft.Text(f"Error initializing project: {ex}"), open=True)
+            )
+            self.page_ref.update()
+
+    def _initialize_workspace(self, e):
+        try:
+            self.pm.initialize_workspace()
+            self.page_ref.overlay.append(
+                ft.SnackBar(
+                    ft.Text("Workspace initialized successfully"),
+                    open=True,
+                )
+            )
+            self._update_view()
+            self.update()
+        except Exception as ex:
+            self.page_ref.overlay.append(
+                ft.SnackBar(ft.Text(f"Error initializing workspace: {ex}"), open=True)
+            )
+            self.page_ref.update()
 
     def _show_create_project_dialog(self, e):
         repo_url_field = ft.TextField(

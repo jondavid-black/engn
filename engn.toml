@@ -8,3 +8,4 @@ roles = [
     "USER",
 ]
 theme_preference = "DARK"
+default_project = "engn-test"

@@ -10,6 +10,7 @@ class Project:
     id: str
     name: str
     path: Path
+    is_initialized: bool = False
 
 
 class ProjectManager:
@@ -36,14 +37,73 @@ class ProjectManager:
         Get all projects as Project objects.
         """
         names = self.list_projects()
-        return [
-            Project(
-                id=name,  # Use name as ID for now
-                name=name,
-                path=self.working_directory / name,
+        projects = []
+        for name in names:
+            path = self.working_directory / name
+            is_initialized = (path / "engn.toml").exists()
+            projects.append(
+                Project(
+                    id=name,  # Use name as ID for now
+                    name=name,
+                    path=path,
+                    is_initialized=is_initialized,
+                )
             )
-            for name in names
-        ]
+        return projects
+
+    def initialize_project(self, project_name: str) -> None:
+        """
+        Initialize an existing project with engn structure.
+        """
+        project_path = self._get_project_path(project_name)
+
+        # Create directories
+        for dir_name in ["arch", "pm", "ux"]:
+            (project_path / dir_name).mkdir(exist_ok=True)
+
+        # Create engn.toml
+        config_path = project_path / "engn.toml"
+        if not config_path.exists():
+            with open(config_path, "w") as f:
+                f.write('arch_path = "arch"\n')
+                f.write('pm_path = "pm"\n')
+                f.write('ux_path = "ux"\n')
+
+        # Initialize beads if installed
+        import subprocess
+
+        if shutil.which("bd"):
+            try:
+                subprocess.run(["bd", "init"], cwd=project_path, check=True)
+            except subprocess.CalledProcessError:
+                # Beads might already be initialized or other error
+                pass
+
+    def initialize_workspace(self) -> None:
+        """
+        Initialize the working directory with engn structure.
+        """
+        # Create directories
+        for dir_name in ["arch", "pm", "ux"]:
+            (self.working_directory / dir_name).mkdir(exist_ok=True)
+
+        # Create engn.toml
+        config_path = self.working_directory / "engn.toml"
+        if not config_path.exists():
+            with open(config_path, "w") as f:
+                f.write('arch_path = "arch"\n')
+                f.write('pm_path = "pm"\n')
+                f.write('ux_path = "ux"\n')
+
+        # Initialize beads if installed
+        import subprocess
+
+        if shutil.which("bd"):
+            try:
+                subprocess.run(["bd", "init"], cwd=self.working_directory, check=True)
+            except subprocess.CalledProcessError:
+                # Beads might already be initialized or other error
+                pass
 
     def create_project(self, repo_url: str) -> None:
         """
