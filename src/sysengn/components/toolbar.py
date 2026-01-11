@@ -46,15 +46,27 @@ class Toolbar(ft.Container):
         # Build the UI
         self._build_content()
 
+    def select_tab(self, index: int):
+        """Programmatically select a tab by index."""
+        print(f"Selecting tab index: {index}")
+        self.tabs_control.selected_index = index
+        try:
+            self.tabs_control.update()
+        except Exception:
+            print(f"Failed to update tabs_control for index {index}")
+            pass
+        self.on_tab_change(index)
+
     def _build_tabs(self) -> ft.Tabs:
         def on_tab_click(e):
             index = int(e.data)
-            self.tabs_control.selected_index = index
-            try:
-                self.tabs_control.update()
-            except Exception:
-                pass
-            self.on_tab_change(index)
+            self.select_tab(index)
+            # self.tabs_control.selected_index = index
+            # try:
+            #     self.tabs_control.update()
+            # except Exception:
+            #     pass
+            # self.on_tab_change(index)
 
         tab_bar = ft.TabBar(
             tabs=[ft.Tab(label=name) for name in self.tabs_list],
@@ -210,7 +222,7 @@ class Toolbar(ft.Container):
                         height=45,
                         tooltip="Go to Home",
                     ),
-                    on_click=lambda _: self.on_tab_change(0),
+                    on_click=lambda _: self.select_tab(0),
                 ),
                 ft.Container(width=10),
                 project_dropdown,
@@ -299,14 +311,23 @@ class Toolbar(ft.Container):
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
+        center_section = ft.Row(
+            controls=[
+                ft.Container(width=10),
+                self.tabs_control,
+                ft.Container(width=10),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
         banner_row = ft.Row(
             controls=[
-                left_section,
-                ft.Container(
-                    content=self.tabs_control, expand=True, alignment=ft.Alignment(0, 0)
-                ),
-                right_section,
+                ft.Container(content=left_section),
+                ft.Container(content=center_section),
+                ft.Container(content=right_section),
             ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 

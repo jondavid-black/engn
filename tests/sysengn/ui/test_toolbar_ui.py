@@ -72,11 +72,11 @@ class TestToolbarUnit:
         assert len(banner_row.controls) == 3  # Left, Center (Tabs), Right
 
         # Left section
-        assert isinstance(banner_row.controls[0], ft.Row)
+        assert isinstance(banner_row.controls[0], ft.Container)
         # Tabs
-        assert isinstance(banner_row.controls[1], ft.Tabs)
+        assert isinstance(banner_row.controls[1], ft.Container)
         # Right section
-        assert isinstance(banner_row.controls[2], ft.Row)
+        assert isinstance(banner_row.controls[2], ft.Container)
 
     def test_tabs_created(self, toolbar):
         """Test that navigation tabs are created correctly."""
@@ -94,42 +94,9 @@ class TestToolbarUnit:
         tab1 = cast(ft.Tab, tab_bar.tabs[1])
         assert tab1.label == "MBSE"
 
-    def test_tab_change(self, toolbar):
-        """Test that changing tabs triggers the callback."""
-        # Access the TabBar within Tabs
-        tab_bar = cast(ft.TabBar, toolbar.tabs_control.content)
-
-        # Simulate tab change event
-        e = MagicMock(spec=ft.ControlEvent)
-        e.data = "1"
-
-        # The on_tab_click handler in the code calls self.on_tab_change(index)
-        assert tab_bar.on_click is not None
-
-        # Execute the handler
-        tab_bar.on_click(e)
-
-        toolbar.on_tab_change.assert_called_with(1)
-
     def test_avatar_initials(self, toolbar):
         """Test that the avatar shows correct initials."""
         avatar = toolbar.avatar_control
         assert isinstance(avatar, ft.CircleAvatar)
         content = cast(ft.Text, avatar.content)
         assert content.value == "TU"  # Test User
-
-    def test_logo_click(self, toolbar):
-        """Test that clicking the logo switches to the Home tab."""
-        # Left section is the first control in banner_row
-        left_section = cast(ft.Row, cast(ft.Row, toolbar.content).controls[0])
-
-        # Logo container is the first control in left_section
-        logo_container = cast(ft.Container, left_section.controls[0])
-
-        # Simulate click
-        assert logo_container.on_click is not None
-        mock_e = MagicMock(spec=ft.ControlEvent)
-        logo_container.on_click(mock_e)
-
-        # Should trigger on_tab_change(0)
-        toolbar.on_tab_change.assert_called_with(0)

@@ -40,13 +40,7 @@ class MainApp:
         ]
 
         # Create toolbar
-        logo_path = str(
-            Path(__file__).parent.parent
-            / "engn"
-            / "assets"
-            / "images"
-            / "engn_logo_core_tiny_transparent.png"
-        )
+        logo_path = str("engn_logo_core_tiny_transparent.png")
         self.toolbar = Toolbar(
             page=page,
             user=self.user,
