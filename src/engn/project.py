@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -50,16 +51,24 @@ def create_new_project(name: str, working_dir: Path) -> Path:
     project_path.mkdir(parents=True)
 
     # Initialize git
-    subprocess.run(["git", "init"], cwd=project_path, check=True, capture_output=True)
+    subprocess.run(["git", "init", "-b", "main"], cwd=project_path, check=True, capture_output=True)
+
+    # Initialize engn and beads
+    init_project_structure(project_path)
+
+    # Establish initial commit
     subprocess.run(
-        ["git", "branch", "-M", "main"],
+        ["git", "add", "."],
         cwd=project_path,
         check=True,
         capture_output=True,
     )
-
-    # Initialize engn and beads
-    init_project_structure(project_path)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=project_path,
+        check=True,
+        capture_output=True,
+    )
 
     return project_path
 
@@ -91,8 +100,14 @@ def delete_project(name: str, working_dir: Path) -> bool:
     if not project_path.exists() or not project_path.is_dir():
         return False
 
-    shutil.rmtree(project_path)
-    return True
+    # Delete with retries to handle locked files (e.g., beads daemon)
+    for _ in range(3):
+        shutil.rmtree(project_path, ignore_errors=True)
+        if not project_path.exists():
+            return True
+        time.sleep(0.1)  # Brief delay for file handles to release
+
+    return not project_path.exists()
 
 
 def list_projects(working_dir: Path) -> List[str]:
