@@ -1,0 +1,10 @@
+[[users]]
+id = "ee3f0e7e-7a6b-4791-bed5-6385fc10a219"
+email = "jd@sysengn.org"
+name = "JD Black"
+password_hash = "$argon2id$v=19$m=65536,t=3,p=4$D4tynsKzvjz/egk1j9dg0g$UKOFtskBBnyZNDHZoN5qaAE/dOr4ocGp+77sX2Zu6BQ"
+roles = [
+    "ADMIN",
+    "USER",
+]
+theme_preference = "DARK"

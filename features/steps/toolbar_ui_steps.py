@@ -28,6 +28,13 @@ def step_app_running(context):
         "FLET_SERVER_PORT": str(port),
     }
 
+    # Backup and clear engn.toml to ensure fresh state with default admin
+    config_path = project_root / "engn.toml"
+    context.config_backup = None
+    if config_path.exists():
+        context.config_backup = config_path.read_text()
+        config_path.write_text("")
+
     # Start the server
     context.server_proc = subprocess.Popen(
         ["uv", "run", "sysengn", "serve"],
@@ -50,6 +57,20 @@ def step_app_running(context):
     context.page.goto(f"http://localhost:{context.server_port}")
     context.page.wait_for_load_state("networkidle")
 
+    # Handle Login if present
+    time.sleep(3)
+    # The default admin created when config is empty is admin@example.com / adminpass
+    # Email field is roughly below the welcome text
+    # Let's try to click a few spots in the center area to ensure focus
+    for y in [400, 420, 440]:
+        context.page.mouse.click(640, y)
+
+    context.page.keyboard.type("admin@example.com")
+    context.page.keyboard.press("Tab")
+    context.page.keyboard.type("adminpass")
+    context.page.keyboard.press("Enter")
+    time.sleep(5)  # Give it more time to load main app
+
     # Register cleanup
     def cleanup():
         if hasattr(context, "browser"):
@@ -62,6 +83,11 @@ def step_app_running(context):
                 context.server_proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 context.server_proc.kill()
+
+        # Restore config
+        if hasattr(context, "config_backup") and context.config_backup is not None:
+            config_path = project_root / "engn.toml"
+            config_path.write_text(context.config_backup)
 
     context.add_cleanup(cleanup)
 
