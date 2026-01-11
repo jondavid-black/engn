@@ -449,6 +449,7 @@ dependencies = [
     { name = "argon2-cffi" },
     { name = "astropy" },
     { name = "flet", extra = ["all"] },
+    { name = "flet-webview" },
     { name = "gitpython" },
     { name = "pydantic" },
 ]
@@ -470,6 +471,7 @@ requires-dist = [
     { name = "argon2-cffi", specifier = ">=25.1.0" },
     { name = "astropy", specifier = ">=7.2.0" },
     { name = "flet", extras = ["all"], specifier = ">=0.80.1" },
+    { name = "flet-webview", specifier = ">=0.1.0" },
     { name = "gitpython", specifier = ">=3.1.46" },
     { name = "pydantic", specifier = ">=2.12.5" },
 ]
@@ -570,6 +572,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f3/f5/921d9b4f0cc09f31306d285944ff03d7ab47201e9fb77a0c0fb8cac64367/flet_web-0.80.1.tar.gz", hash = "sha256:5397e0d95c389284b00931401940df957c8117d9ec01785ee2afdaae092e9bb2", size = 14485, upload-time = "2026-01-02T21:41:37.338Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ca/79/4e61e2a1f680f87b815d32e957a18e8f400d2840a34e52b54965c69e51dc/flet_web-0.80.1-py3-none-any.whl", hash = "sha256:609c65e8c3ce65991bd376ec994d0bad961e143f56448e406cbfb879687eb433", size = 21566331, upload-time = "2026-01-02T21:41:35.514Z" },
+]
+
+[[package]]
+name = "flet-webview"
+version = "0.80.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flet" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/df/a1/706ab9f4a922257eb7d7ca3ba6aa4c9221d060c2c3f4c5ed09a11a44ce1c/flet_webview-0.80.1.tar.gz", hash = "sha256:6eaae8b8723978351eebdced1799611d7915c77dcb97738c4a97ad7e94bf4476", size = 20593, upload-time = "2026-01-02T21:42:10.644Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8a/88/d6810e977e52dae52482bdef79d26b5c95fb2d91edb9c1de67a0b152cf5e/flet_webview-0.80.1-py3-none-any.whl", hash = "sha256:24dbdfaa5bca020d404c5210cc5988a3c48c410f50e5fa5f204b05729f95b2b1", size = 23595, upload-time = "2026-01-02T21:42:11.359Z" },
 ]
 
 [[package]]
