@@ -1,4 +1,5 @@
 import pytest
+import subprocess
 from engn.project import (
     create_new_project,
     list_projects,
@@ -31,6 +32,16 @@ def test_create_new_project(temp_working_dir):
         content = f.read()
         assert "[paths]" in content
         assert 'pm = "pm"' in content
+
+    # Check default branch is main
+    result = subprocess.run(
+        ["git", "symbolic-ref", "--short", "HEAD"],
+        cwd=project_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.strip() == "main"
 
 
 def test_list_projects(temp_working_dir):

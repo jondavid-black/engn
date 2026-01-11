@@ -51,6 +51,12 @@ def create_new_project(name: str, working_dir: Path) -> Path:
 
     # Initialize git
     subprocess.run(["git", "init"], cwd=project_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "branch", "-M", "main"],
+        cwd=project_path,
+        check=True,
+        capture_output=True,
+    )
 
     # Initialize engn and beads
     init_project_structure(project_path)
