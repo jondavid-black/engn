@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from typing import Any
+from typing import Any, Optional
 
 import flet as ft
 from engn.utils import get_version
@@ -28,9 +28,11 @@ class MainApp:
         config: ProjectConfig,
         user: EngnUser | SysEngnUser | None = None,
         authenticator: Authenticator | None = None,
+        working_directory: Optional[Path] = None,
     ):
         self.page = page
         self.config = config
+        self.working_directory = working_directory or Path.cwd()
         if user:
             self.user = user
         else:
@@ -40,7 +42,7 @@ class MainApp:
 
         # Create domain views
         self.views = [
-            HomeDomainPage(self.page, self.user, Path.cwd()),  # type: ignore
+            HomeDomainPage(self.page, self.user, self.working_directory),  # type: ignore
             MBSEView(),
             UXView(),
             DocsView(),
@@ -56,6 +58,7 @@ class MainApp:
             tabs=["Home", "MBSE", "UX", "Docs"],
             on_logout=self._on_logout,
             on_profile=self._on_profile,
+            working_directory=self.working_directory,
             on_admin=self._on_admin,
             on_toggle_terminal=self._on_toggle_terminal,
         )
@@ -100,18 +103,19 @@ class MainApp:
         return self.layout
 
 
-def flet_main(page: ft.Page):
+def flet_main(page: ft.Page, working_directory: Optional[Path] = None):
     page.title = "SysEngn"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
 
-    config = ProjectConfig.load(Path.cwd())
+    working_dir = working_directory or Path.cwd()
+    config = ProjectConfig.load(working_dir)
 
     def show_main_app():
         page.clean()
         store: Any = getattr(page.session, "store", page.session)
         user = store.get("user")
-        app = MainApp(page, config, user=user)
+        app = MainApp(page, config, user=user, working_directory=working_dir)
         page.add(app.build())
         page.update()
 
@@ -179,15 +183,20 @@ def main() -> None:
         print(get_version())
         sys.exit(0)
 
+    working_dir = Path(args.working_directory).resolve()
+
+    def start_flet(page: ft.Page):
+        flet_main(page, working_dir)
+
     if args.command == "serve":
         ft.app(
-            target=flet_main,
+            target=start_flet,
             view=ft.AppView.WEB_BROWSER,
             assets_dir=str(Path(__file__).parent.parent / "engn" / "assets"),
         )
     else:
         ft.app(
-            target=flet_main,
+            target=start_flet,
             assets_dir=str(Path(__file__).parent.parent / "engn" / "assets"),
         )
 

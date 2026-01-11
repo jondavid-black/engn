@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 from sysengn.main import main, flet_main
 from sysengn.views import LoginView
@@ -34,7 +35,7 @@ def test_flet_main_login_flow():
         mock_config = MagicMock()
         mock_load.return_value = mock_config
 
-        flet_main(mock_page)
+        flet_main(mock_page, working_directory=Path("."))
 
         # Should have added LoginView
         mock_page.add.assert_called()
@@ -54,7 +55,7 @@ def test_flet_main_already_logged_in():
         mock_load.return_value = mock_config
 
         with patch("sysengn.main.MainApp") as mock_app_cls:
-            flet_main(mock_page)
+            flet_main(mock_page, working_directory=Path("."))
 
             # Should show main app directly
             mock_app_cls.assert_called_once()

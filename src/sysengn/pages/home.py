@@ -128,6 +128,11 @@ class HomeDomainPage(ft.Row):
                 ft.Row(
                     [
                         ft.Text("Projects", size=30, weight=ft.FontWeight.BOLD),
+                        ft.IconButton(
+                            icon=ft.Icons.REFRESH,
+                            tooltip="Refresh projects",
+                            on_click=lambda _: (self._update_view(), self.update()),
+                        ),
                         ft.Container(expand=True),
                         ft.FilledButton(
                             content="Initialize Workspace",

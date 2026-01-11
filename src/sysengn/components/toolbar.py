@@ -24,6 +24,7 @@ class Toolbar(ft.Container):
         tabs: list[str],
         on_logout: Callable[[], None],
         on_profile: Callable[[], None],
+        working_directory: Optional[Path] = None,
         on_admin: Optional[Callable[[], None]] = None,
         on_toggle_terminal: Optional[Callable[[], None]] = None,
     ):
@@ -38,6 +39,7 @@ class Toolbar(ft.Container):
         self.on_admin = on_admin
         self.logo_path = logo_path
         self.on_toggle_terminal = on_toggle_terminal
+        self.working_directory = working_directory or Path.cwd()
 
         # Exposed controls
         self.tabs_control = self._build_tabs()
@@ -104,8 +106,8 @@ class Toolbar(ft.Container):
         )
 
     def _build_project_dropdown(self) -> ft.Dropdown:
-        # Initialize ProjectManager with current working directory
-        pm = ProjectManager(Path.cwd())
+        # Initialize ProjectManager with working directory
+        pm = ProjectManager(self.working_directory)
         projects = pm.get_all_projects()
 
         project_options = [ft.dropdown.Option(key=p.id, text=p.name) for p in projects]
