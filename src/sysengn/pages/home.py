@@ -129,13 +129,13 @@ class HomeDomainPage(ft.Row):
                     [
                         ft.Text("Projects", size=30, weight=ft.FontWeight.BOLD),
                         ft.Container(expand=True),
-                        ft.ElevatedButton(
+                        ft.FilledButton(
                             content="Initialize Workspace",
                             icon=ft.Icons.ROCKET_LAUNCH,
                             visible=not is_workspace_initialized,
                             on_click=self._initialize_workspace,
                         ),
-                        ft.ElevatedButton(
+                        ft.FilledButton(
                             content="New Project",
                             icon=ft.Icons.ADD,
                             on_click=self._show_create_project_dialog,

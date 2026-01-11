@@ -469,7 +469,7 @@ class DocumentOutlineView(TreeView):
             trailing=trailing,
             on_click=on_click,
             on_long_press=on_double_click_handler,
-            content_padding=ft.padding.only(left=depth * self.indent_size + 16),
+            content_padding=ft.Padding.only(left=depth * self.indent_size + 16),
             bgcolor=ft.Colors.PRIMARY_CONTAINER if is_selected else None,
         )
 
@@ -539,7 +539,7 @@ class DocumentOutlineView(TreeView):
             expanded=node.is_expanded,
             controls=[self._build_node(child, depth + 1) for child in node.children],
             on_change=on_expansion_change,
-            tile_padding=ft.padding.only(left=depth * self.indent_size),
+            tile_padding=ft.Padding.only(left=depth * self.indent_size),
             bgcolor=ft.Colors.PRIMARY_CONTAINER if is_selected else None,
         )
 

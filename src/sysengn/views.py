@@ -78,7 +78,7 @@ class LoginView(ft.Column):
                     name = "GitHub"
 
             login_buttons.append(
-                ft.ElevatedButton(
+                ft.FilledButton(
                     content=ft.Text(f"Login with {name}"),
                     on_click=self._on_oauth_click(provider),
                     width=300,
@@ -102,7 +102,7 @@ class LoginView(ft.Column):
                     ft.Text("Sign in with email", size=14),
                     self.email_field,
                     self.password_field,
-                    ft.ElevatedButton(
+                    ft.FilledButton(
                         content=ft.Text("Sign In"),
                         on_click=self.handle_local_login,
                         width=300,
@@ -227,7 +227,7 @@ class UserProfileView(ft.Column):
             ft.Divider(height=20),
             ft.Row(
                 controls=[
-                    ft.ElevatedButton("Save", on_click=self.save_profile),
+                    ft.FilledButton("Save", on_click=self.save_profile),
                     ft.OutlinedButton("Cancel", on_click=lambda _: self.on_back()),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
@@ -282,7 +282,7 @@ class UserProfileView(ft.Column):
                     height=30,
                     bgcolor=color,
                     border_radius=15,
-                    border=ft.border.all(2, ft.Colors.WHITE) if is_selected else None,
+                    border=ft.Border.all(2, ft.Colors.WHITE) if is_selected else None,
                     on_click=self.on_color_click,
                     data=color,
                     tooltip=color,
