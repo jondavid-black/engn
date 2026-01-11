@@ -6,10 +6,7 @@ import tomli_w
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
-
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from typing import Optional, Any, Mapping, cast
 
 # Workaround for flet 0.80.1 ImportError
 import flet.version
@@ -20,6 +17,9 @@ if not hasattr(flet.version, "version"):
 
 from flet.auth.oauth_provider import OAuthProvider
 from flet.auth.providers import GitHubOAuthProvider, GoogleOAuthProvider
+
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +97,16 @@ def _read_config() -> dict:
 
 
 def _write_config(config: dict):
+    def remove_none(obj: Any) -> Any:
+        if isinstance(obj, dict):
+            return {k: remove_none(v) for k, v in obj.items() if v is not None}
+        elif isinstance(obj, list):
+            return [remove_none(v) for v in obj]
+        return obj
+
+    clean_config = cast(Mapping[str, Any], remove_none(config))
     with CONFIG_PATH.open("wb") as f:
-        tomli_w.dump(config, f)
+        tomli_w.dump(clean_config, f)
 
 
 def authenticate_local_user(email: str, password: str) -> Optional[User]:

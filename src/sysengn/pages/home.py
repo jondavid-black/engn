@@ -120,7 +120,7 @@ class HomeDomainPage(ft.Row):
                         ft.Text("Projects", size=30, weight=ft.FontWeight.BOLD),
                         ft.Container(expand=True),
                         ft.ElevatedButton(
-                            "New Project",
+                            content="New Project",
                             icon=ft.Icons.ADD,
                             on_click=self._show_create_project_dialog,
                         ),
@@ -233,8 +233,9 @@ class HomeDomainPage(ft.Row):
             self.active_project_name = project_name
 
         # Update session store
-        store: Any = getattr(self.page_ref.session, "store", self.page_ref.session)
-        store.set("user", self.user)
+        if self.page_ref:
+            store: Any = getattr(self.page_ref.session, "store", self.page_ref.session)
+            store.set("user", self.user)
 
         self._update_view()
         self.update()
@@ -266,10 +267,10 @@ class HomeDomainPage(ft.Row):
             ),
             actions=[
                 ft.TextButton(
-                    "Cancel", on_click=lambda e: setattr(dialog, "open", False)
+                    content="Cancel", on_click=lambda e: setattr(dialog, "open", False)
                 ),
                 ft.TextButton(
-                    "Delete",
+                    content="Delete",
                     on_click=confirm_delete,
                     style=ft.ButtonStyle(color=ft.Colors.RED),
                 ),
@@ -310,9 +311,9 @@ class HomeDomainPage(ft.Row):
             ),
             actions=[
                 ft.TextButton(
-                    "Cancel", on_click=lambda e: setattr(dialog, "open", False)
+                    content="Cancel", on_click=lambda e: setattr(dialog, "open", False)
                 ),
-                ft.TextButton("Create", on_click=create_project),
+                ft.TextButton(content="Create", on_click=create_project),
             ],
         )
         self.page_ref.overlay.append(dialog)
