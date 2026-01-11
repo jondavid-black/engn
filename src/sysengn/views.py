@@ -1,6 +1,6 @@
 import flet as ft
-from typing import Callable, Any
-from engn.core.auth import authenticate_local_user
+from typing import Callable, Any, Optional
+from engn.core.auth import User, authenticate_local_user, update_user_profile
 
 
 class LoginView(ft.Column):
@@ -155,3 +155,170 @@ class LoginView(ft.Column):
                 ft.SnackBar(ft.Text("Invalid credentials"), open=True)
             )
             self.page_ref.update()
+
+
+class UserProfileView(ft.Column):
+    """View for editing user profile."""
+
+    def __init__(
+        self,
+        page: ft.Page,
+        user: User,
+        on_back: Callable[[], None],
+        on_save: Optional[Callable[[], None]] = None,
+    ):
+        """Initialize the user profile view.
+
+        Args:
+            page: Reference to the main Flet page.
+            user: The current user object.
+            on_back: Function to call when back button is clicked.
+            on_save: Optional function to call when profile is saved.
+        """
+        super().__init__()
+        self.page_ref = page
+        self.user = user
+        self.on_back = on_back
+        self.on_save = on_save
+
+        self.alignment = ft.MainAxisAlignment.CENTER
+        self.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+        self.expand = True
+
+        self.first_name_field = ft.TextField(
+            label="First Name",
+            value=user.first_name or "",
+            width=300,
+            on_change=self.update_avatar_initials,
+        )
+        self.last_name_field = ft.TextField(
+            label="Last Name",
+            value=user.last_name or "",
+            width=300,
+            on_change=self.update_avatar_initials,
+        )
+
+        # Color options
+        self.color_options = [
+            ft.Colors.BLUE,
+            ft.Colors.RED,
+            ft.Colors.GREEN,
+            ft.Colors.ORANGE,
+            ft.Colors.PURPLE,
+            ft.Colors.TEAL,
+            ft.Colors.PINK,
+            ft.Colors.CYAN,
+        ]
+
+        self.selected_color = user.preferred_color or ft.Colors.BLUE
+        self.color_selection = ft.Row(spacing=10, alignment=ft.MainAxisAlignment.CENTER)
+        self._build_color_options()
+
+        self.avatar_display = self._build_avatar()
+
+        self.controls = [
+            ft.Text("User Profile", size=24, weight=ft.FontWeight.BOLD),
+            ft.Divider(),
+            self.avatar_display,
+            self.first_name_field,
+            self.last_name_field,
+            ft.Text("Preferred Color:", size=16),
+            self.color_selection,
+            ft.Divider(height=20),
+            ft.Row(
+                controls=[
+                    ft.ElevatedButton("Save", on_click=self.save_profile),
+                    ft.OutlinedButton("Cancel", on_click=lambda _: self.on_back()),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+        ]
+
+    def _get_initials(self) -> str:
+        first = self.first_name_field.value or ""
+        last = self.last_name_field.value or ""
+        initials = ""
+        if first:
+            initials += first[0].upper()
+        if last:
+            initials += last[0].upper()
+
+        if not initials and self.user.name:
+            # Fallback to name initials
+            parts = self.user.name.split()
+            if len(parts) >= 2:
+                initials = f"{parts[0][0].upper()}{parts[-1][0].upper()}"
+            elif parts:
+                initials = parts[0][0].upper()
+
+        if not initials:
+            initials = self.user.email[0].upper()
+
+        return initials
+
+    def _build_avatar(self) -> ft.CircleAvatar:
+        initials = self._get_initials()
+        self.avatar_text_control = ft.Text(initials, color=ft.Colors.WHITE)
+        return ft.CircleAvatar(
+            content=self.avatar_text_control,
+            bgcolor=self.selected_color,
+            radius=40,
+        )
+
+    def update_avatar_initials(self, e):
+        """Update avatar initials when name fields change."""
+        initials = self._get_initials()
+        text_control: Any = self.avatar_text_control
+        text_control.value = initials
+        self.avatar_display.update()
+
+    def _build_color_options(self):
+        self.color_selection.controls.clear()
+        for color in self.color_options:
+            is_selected = color == self.selected_color
+            self.color_selection.controls.append(
+                ft.Container(
+                    width=30,
+                    height=30,
+                    bgcolor=color,
+                    border_radius=15,
+                    border=ft.border.all(2, ft.Colors.WHITE) if is_selected else None,
+                    on_click=self.on_color_click,
+                    data=color,
+                    tooltip=color,
+                )
+            )
+
+    def on_color_click(self, e):
+        """Handle color selection."""
+        self.selected_color = e.control.data
+        self._build_color_options()
+        self.avatar_display.bgcolor = self.selected_color
+        self.update()
+
+    def save_profile(self, e):
+        """Save profile changes to the configuration file."""
+        self.user.first_name = self.first_name_field.value
+        self.user.last_name = self.last_name_field.value
+        self.user.preferred_color = self.selected_color
+
+        # Update full name if both parts are present
+        if self.user.first_name and self.user.last_name:
+            self.user.name = f"{self.user.first_name} {self.user.last_name}"
+
+        update_user_profile(
+            self.user.id,
+            self.user.first_name,
+            self.user.last_name,
+            self.user.preferred_color,
+        )
+
+        self.page_ref.overlay.append(
+            ft.SnackBar(ft.Text("Profile updated successfully!"), open=True)
+        )
+        self.page_ref.update()
+
+        if self.on_save:
+            self.on_save()
+
+        self.on_back()
