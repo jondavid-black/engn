@@ -36,17 +36,18 @@ def step_app_running(context):
         config_path.write_text("")
 
     # Start the server
+    # Use DEVNULL for stdout/stderr to avoid blocking on PIPE
     context.server_proc = subprocess.Popen(
         ["uv", "run", "sysengn", "serve"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         cwd=str(project_root),
         env=env,
     )
     context.server_port = port
 
     # Give server time to start
-    time.sleep(3)
+    time.sleep(5)
 
     # Start playwright
     context.playwright = sync_playwright().start()
@@ -55,21 +56,33 @@ def step_app_running(context):
 
     # Navigate to the app
     context.page.goto(f"http://localhost:{context.server_port}")
-    context.page.wait_for_load_state("networkidle")
+    context.page.wait_for_load_state("load", timeout=30000)
+    # Wait for Flet/Flutter to initialize the canvas
+    time.sleep(5)
 
     # Handle Login if present
-    time.sleep(3)
     # The default admin created when config is empty is admin@example.com / adminpass
-    # Email field is roughly below the welcome text
-    # Let's try to click a few spots in the center area to ensure focus
-    for y in [400, 420, 440]:
-        context.page.mouse.click(640, y)
+    # Use coordinates that hit the fields in the centered layout
 
+    # Email field
+    context.page.mouse.click(640, 450)
+    time.sleep(0.5)
+    context.page.keyboard.press("Control+A")
+    context.page.keyboard.press("Backspace")
     context.page.keyboard.type("admin@example.com")
-    context.page.keyboard.press("Tab")
+
+    # Password field
+    context.page.mouse.click(640, 510)
+    time.sleep(0.5)
+    context.page.keyboard.press("Control+A")
+    context.page.keyboard.press("Backspace")
     context.page.keyboard.type("adminpass")
+
+    # Sign In
     context.page.keyboard.press("Enter")
-    time.sleep(5)  # Give it more time to load main app
+
+    # Give it time to load main app
+    time.sleep(10)
 
     # Register cleanup
     def cleanup():
