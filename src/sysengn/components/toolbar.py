@@ -47,14 +47,19 @@ class Toolbar(ft.Container):
         self.padding = Padding.symmetric(horizontal=16, vertical=8)
         self.height = 60
 
-    def _build_logo(self) -> ft.Image:
+    def _build_logo(self) -> ft.Container:
         """Build the application logo."""
         logo_path = Path(__file__).parent.parent.parent / "engn" / "assets" / "images"
-        return ft.Image(
+        image = ft.Image(
             src=str(logo_path / "engn_logo_core_tiny_transparent.png"),
             width=40,
             height=40,
             fit=BoxFit.CONTAIN,
+        )
+        return ft.Container(
+            content=image,
+            on_click=lambda _: self._handle_tab_click(0),
+            tooltip="Go to Home",
         )
 
     def _build_tabs(self) -> ft.Row:

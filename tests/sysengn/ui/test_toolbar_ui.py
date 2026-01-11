@@ -1,6 +1,6 @@
 """Unit tests for SysEngn toolbar component using mocks."""
 
-from typing import cast
+from typing import Callable, cast
 from unittest.mock import MagicMock, Mock
 
 import flet as ft
@@ -43,7 +43,8 @@ class TestToolbarUnit:
         row = cast(ft.Row, toolbar.content)
         controls = row.controls
         assert len(controls) == 4
-        assert isinstance(controls[0], ft.Image)  # Logo
+        assert isinstance(controls[0], ft.Container)  # Logo Container
+        assert isinstance(controls[0].content, ft.Image)  # Logo Image
         assert isinstance(controls[1], ft.Container)  # Spacer
         assert isinstance(controls[2], ft.Row)  # Tabs
         assert isinstance(controls[3], ft.Container)  # Spacer
@@ -51,8 +52,29 @@ class TestToolbarUnit:
     def test_logo_path(self, toolbar):
         """Test that the logo has a source path."""
         row = cast(ft.Row, toolbar.content)
-        logo = cast(ft.Image, row.controls[0])
+        logo_container = cast(ft.Container, row.controls[0])
+        logo = cast(ft.Image, logo_container.content)
         assert "engn_logo_core_tiny_transparent.png" in str(logo.src)
+
+    def test_logo_click(self, toolbar):
+        """Test that clicking the logo switches to the Home tab."""
+        # Set selection to something else first
+        toolbar.selected_index = 2
+        assert toolbar.selected_index == 2
+
+        # Get logo container
+        row = cast(ft.Row, toolbar.content)
+        logo_container = cast(ft.Container, row.controls[0])
+
+        # Simulate click
+        assert logo_container.on_click is not None
+        mock_e = MagicMock(spec=ft.ControlEvent)
+        handler = cast(Callable, logo_container.on_click)
+        handler(mock_e)
+
+        # Verify switched to Home (index 0)
+        assert toolbar.selected_index == 0
+        toolbar.on_tab_change.assert_called_with(0)
 
     def test_tabs_created(self, toolbar):
         """Test that navigation tabs are created correctly."""

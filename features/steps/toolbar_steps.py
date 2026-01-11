@@ -48,10 +48,16 @@ def step_toolbar_has_logo(context):
     assert row is not None, "Toolbar content should not be None"
     assert hasattr(row, "controls"), "Toolbar content should have controls"
 
-    # First control should be the logo (ft.Image)
-    logo = row.controls[0]
+    # First control should be the logo container
+    logo_container = row.controls[0]
+    assert isinstance(logo_container, ft.Container), (
+        f"First control should be Container, got {type(logo_container)}"
+    )
+
+    # Content of container should be the image
+    logo = logo_container.content
     assert isinstance(logo, ft.Image), (
-        f"First control should be Image, got {type(logo)}"
+        f"Container content should be Image, got {type(logo)}"
     )
 
 
@@ -59,7 +65,8 @@ def step_toolbar_has_logo(context):
 def step_logo_uses_asset(context):
     """Verify the logo uses the correct asset path."""
     row = context.toolbar.content
-    logo = row.controls[0]
+    logo_container = row.controls[0]
+    logo = logo_container.content
 
     assert hasattr(logo, "src"), "Logo should have src attribute"
     assert "engn_logo_core_tiny_transparent.png" in logo.src, (
