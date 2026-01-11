@@ -1,7 +1,15 @@
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 import git
+
+
+@dataclass
+class Project:
+    id: str
+    name: str
+    path: Path
 
 
 class ProjectManager:
@@ -22,6 +30,20 @@ class ProjectManager:
                 projects.append(item.name)
 
         return sorted(projects)
+
+    def get_all_projects(self) -> list[Project]:
+        """
+        Get all projects as Project objects.
+        """
+        names = self.list_projects()
+        return [
+            Project(
+                id=name,  # Use name as ID for now
+                name=name,
+                path=self.working_directory / name,
+            )
+            for name in names
+        ]
 
     def create_project(self, repo_url: str) -> None:
         """

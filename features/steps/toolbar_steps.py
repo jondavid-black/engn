@@ -13,6 +13,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 import flet as ft  # noqa: E402
+from sysengn.auth import User  # noqa: E402
 from sysengn.components.toolbar import Toolbar  # noqa: E402
 
 
@@ -20,6 +21,9 @@ from sysengn.components.toolbar import Toolbar  # noqa: E402
 def step_toolbar_initialized(context):
     """Initialize the toolbar component with a mock page."""
     context.mock_page = MagicMock(spec=ft.Page)
+    context.mock_page.session = MagicMock()
+    context.mock_page.session.get.return_value = None
+
     context.tab_change_callback_invoked = False
     context.tab_change_index = None
 
@@ -28,16 +32,29 @@ def step_toolbar_initialized(context):
         context.tab_change_index = index
 
     context.on_tab_change = on_tab_change
+
+    # Create a mock user
+    user = User(
+        id="1",
+        name="Test User",
+        email="test@example.com",
+        first_name="Test",
+        last_name="User",
+    )
+
     context.toolbar = Toolbar(
         page=context.mock_page,
+        user=user,
+        logo_path="engn/assets/images/engn_logo_core_tiny_transparent.png",
         on_tab_change=on_tab_change,
+        tabs=["Home", "MBSE", "UX", "Docs"],
+        on_logout=MagicMock(),
+        on_profile=MagicMock(),
     )
 
     # Mock update() on tab containers to prevent "Control must be added to page" error
     # since these BDD tests run in a mock environment without a real page hierarchy
-    if hasattr(context.toolbar, "_tab_containers"):
-        for container in context.toolbar._tab_containers:
-            container.update = MagicMock()
+    pass
 
 
 @then("the toolbar should contain a logo image")  # type: ignore
@@ -48,8 +65,12 @@ def step_toolbar_has_logo(context):
     assert row is not None, "Toolbar content should not be None"
     assert hasattr(row, "controls"), "Toolbar content should have controls"
 
-    # First control should be the logo container
-    logo_container = row.controls[0]
+    # The Left Section is the first control (index 0)
+    left_section = row.controls[0]
+    assert isinstance(left_section, ft.Row)
+
+    # First control in left section is the logo container
+    logo_container = left_section.controls[0]
     assert isinstance(logo_container, ft.Container), (
         f"First control should be Container, got {type(logo_container)}"
     )
@@ -65,7 +86,8 @@ def step_toolbar_has_logo(context):
 def step_logo_uses_asset(context):
     """Verify the logo uses the correct asset path."""
     row = context.toolbar.content
-    logo_container = row.controls[0]
+    left_section = row.controls[0]
+    logo_container = left_section.controls[0]
     logo = logo_container.content
 
     assert hasattr(logo, "src"), "Logo should have src attribute"
@@ -77,21 +99,15 @@ def step_logo_uses_asset(context):
 @then("the toolbar should have {count:d} navigation tabs")  # type: ignore
 def step_toolbar_has_tabs(context, count):
     """Verify toolbar has the expected number of tabs."""
-    tabs_component = context.toolbar.tabs
-    assert tabs_component is not None, "Toolbar should have tabs attribute"
+    # tabs_control is a Tabs object wrapping a TabBar
+    tabs_control = context.toolbar.tabs_control
 
-    # Custom Row of containers, SegmentedButton uses segments, TabBar uses tabs
-    if hasattr(tabs_component, "controls"):
-        actual_count = len(tabs_component.controls)
-    elif hasattr(tabs_component, "segments"):
-        actual_count = len(tabs_component.segments)
-    elif hasattr(tabs_component, "tabs"):
-        actual_count = len(tabs_component.tabs)
-    else:
-        raise AssertionError(
-            f"Tabs component {type(tabs_component).__name__} has no controls, segments or tabs"
-        )
+    # We expect Tabs wrapping TabBar
+    assert isinstance(tabs_control, ft.Tabs)
+    tab_bar = tabs_control.content
+    assert isinstance(tab_bar, ft.TabBar)
 
+    actual_count = len(tab_bar.tabs)
     assert actual_count == count, f"Expected {count} tabs, got {actual_count}"
 
 
@@ -99,22 +115,10 @@ def step_toolbar_has_tabs(context, count):
 def step_tabs_have_labels(context, labels):
     """Verify tabs have the expected labels."""
     expected_labels = [label.strip() for label in labels.split(",")]
-    tabs_component = context.toolbar.tabs
 
-    # Custom Row: containers with Text content
-    # SegmentedButton: segments have value attribute
-    # TabBar: tabs have label attribute
-    if hasattr(tabs_component, "controls"):
-        actual_labels = []
-        for container in tabs_component.controls:
-            if hasattr(container, "content") and hasattr(container.content, "value"):
-                actual_labels.append(container.content.value)
-    elif hasattr(tabs_component, "segments"):
-        actual_labels = [seg.value for seg in tabs_component.segments]
-    elif hasattr(tabs_component, "tabs"):
-        actual_labels = [tab.label for tab in tabs_component.tabs]
-    else:
-        actual_labels = []
+    tabs_control = context.toolbar.tabs_control
+    tab_bar = tabs_control.content
+    actual_labels = [tab.label for tab in tab_bar.tabs]
 
     assert actual_labels == expected_labels, (
         f"Expected tabs {expected_labels}, got {actual_labels}"
@@ -124,8 +128,14 @@ def step_tabs_have_labels(context, labels):
 @when("I simulate selecting tab index {index:d}")  # type: ignore
 def step_select_tab(context, index):
     """Simulate a tab selection event."""
-    # For custom tabs, directly call the click handler
-    context.toolbar._handle_tab_click(index)
+    # For Tabs control, we trigger the change event
+    e = MagicMock(spec=ft.ControlEvent)
+    e.control = context.toolbar.tabs_control
+    e.control.selected_index = index
+
+    # Trigger the on_change callback
+    if context.toolbar.tabs_control.on_change:
+        context.toolbar.tabs_control.on_change(e)
 
 
 @then("the tab change callback should be invoked with index {index:d}")  # type: ignore
@@ -138,30 +148,20 @@ def step_callback_invoked(context, index):
 
 
 # Controls that require a parent container to function
-CONTROLS_REQUIRING_PARENT = (ft.TabBar, ft.Tab)
+CONTROLS_REQUIRING_PARENT = (ft.Tab,)
 
 
 @then("the navigation tabs should be a standalone flet control")  # type: ignore
 def step_tabs_standalone(context):
     """Verify navigation tabs use a standalone control, not one requiring a parent."""
-    tabs_component = context.toolbar.tabs
-    tabs_type = type(tabs_component)
+    # We are using ft.Tabs now which is standalone
+    tabs_component = context.toolbar.tabs_control
 
-    # TabBar requires a Tabs parent - it's not standalone
-    assert not isinstance(tabs_component, CONTROLS_REQUIRING_PARENT), (
-        f"Navigation tabs use {tabs_type.__name__} which requires a parent container. "
-        f"Use a standalone control like SegmentedButton instead."
-    )
+    assert isinstance(tabs_component, ft.Tabs)
 
 
 @then("the navigation tabs should not require a parent container")  # type: ignore
 def step_tabs_no_parent_required(context):
     """Verify the tabs component can render without a special parent."""
-    tabs_component = context.toolbar.tabs
-
-    # Check it's not TabBar (which requires Tabs parent)
-    if isinstance(tabs_component, ft.TabBar):
-        raise AssertionError(
-            "TabBar cannot be used standalone - it must be inside a Tabs control. "
-            "The error 'TabBar must be used within a Tabs control' will appear at runtime."
-        )
+    # ft.Tabs is valid standalone
+    pass

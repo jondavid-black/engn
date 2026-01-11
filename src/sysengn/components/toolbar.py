@@ -1,147 +1,309 @@
 """Toolbar component for SysEngn application."""
 
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Callable, Optional
 
 import flet as ft
-from flet.controls.border import Border, BorderSide
-from flet.controls.box import BoxFit
-from flet.controls.padding import Padding
+from engn.pm import ProjectManager
+from sysengn.auth import Role, User, update_user_theme_preference
 
 
 class Toolbar(ft.Container):
-    """Main application toolbar with logo and navigation tabs."""
+    """The main application bar component for SysEngn.
 
-    TAB_LABELS = ["Home", "MBSE", "UX", "Docs"]
-    TAB_WIDTH = 80
+    This component provides navigation tabs, user profile access, project selection,
+    and global actions like theme toggling and search.
+    """
 
     def __init__(
         self,
         page: ft.Page,
+        user: User,
+        logo_path: str,
         on_tab_change: Callable[[int], None],
+        tabs: list[str],
+        on_logout: Callable[[], None],
+        on_profile: Callable[[], None],
+        on_admin: Optional[Callable[[], None]] = None,
+        on_toggle_terminal: Optional[Callable[[], None]] = None,
     ):
+        """Initialize the application bar."""
         super().__init__()
         self.page_ref = page
+        self.user = user
         self.on_tab_change = on_tab_change
-        self._selected_tab = 0
-        self._tab_containers: list[ft.Container] = []
-        self._tab_texts: list[ft.Text] = []
+        self.tabs_list = tabs
+        self.on_logout = on_logout
+        self.on_profile = on_profile
+        self.on_admin = on_admin
+        self.logo_path = logo_path
+        self.on_toggle_terminal = on_toggle_terminal
 
-        # Build logo
-        logo = self._build_logo()
+        # Exposed controls
+        self.tabs_control = self._build_tabs()
+        self.avatar_control = self._build_avatar()
 
-        # Build custom navigation tabs
-        self.nav_tabs = self._build_tabs()
+        # Build the UI
+        self._build_content()
 
-        self.content = ft.Row(
-            controls=[
-                logo,
-                ft.Container(expand=True),  # Spacer to push tabs to center
-                self.nav_tabs,
-                ft.Container(expand=True),  # Spacer for balance
+    def _build_tabs(self) -> ft.Tabs:
+        tab_bar = ft.TabBar(
+            tabs=[ft.Tab(label=name) for name in self.tabs_list],
+            indicator_color=ft.Colors.BLUE_200,
+            label_color=ft.Colors.BLUE_200,
+            unselected_label_color=ft.Colors.GREY_400,
+            divider_color="transparent",
+        )
+
+        return ft.Tabs(
+            selected_index=0,
+            animation_duration=300,
+            length=len(self.tabs_list),
+            content=tab_bar,
+            on_change=lambda e: self.on_tab_change(
+                e.control.selected_index if e.control else 0
+            ),
+        )
+
+    def _build_avatar(self) -> ft.CircleAvatar:
+        user_initials = (
+            self.user.name[0].upper() if self.user.name else self.user.email[0].upper()
+        )
+
+        # If user has first and last name, show those initials
+        if self.user.first_name and self.user.last_name:
+            user_initials = (
+                f"{self.user.first_name[0].upper()}{self.user.last_name[0].upper()}"
+            )
+
+        return ft.CircleAvatar(
+            content=ft.Text(user_initials, color=ft.Colors.WHITE),
+            bgcolor=self.user.preferred_color
+            if self.user.preferred_color
+            else ft.Colors.BLUE,
+            tooltip=f"{self.user.name or self.user.email}",
+        )
+
+    def _build_project_dropdown(self) -> ft.Dropdown:
+        # Initialize ProjectManager with current working directory
+        pm = ProjectManager(Path.cwd())
+        projects = pm.get_all_projects()
+
+        project_options = [ft.dropdown.Option(key=p.id, text=p.name) for p in projects]
+
+        # Set default active project to first available, or empty if none
+        initial_project_id = projects[0].id if projects else None
+
+        # Only override session if not already set or invalid
+        current_session_project = self.page_ref.session.get("current_project_id")  # type: ignore
+        if not current_session_project and initial_project_id:
+            self.page_ref.session.set("current_project_id", initial_project_id)  # type: ignore
+        elif current_session_project:
+            # Validate it still exists
+            if not any(p.id == current_session_project for p in projects):
+                self.page_ref.session.set("current_project_id", initial_project_id)  # type: ignore
+
+        # Get final effective project ID
+        active_project_id = self.page_ref.session.get("current_project_id")  # type: ignore
+
+        def on_project_change(e):
+            selected_id = e.control.value
+            if selected_id:
+                self.page_ref.session.set("current_project_id", selected_id)  # type: ignore
+                # Refresh current view if it depends on project
+                project_dropdown.update()
+
+                # If currently on MBSE screen (index 1), we might want to refresh content area
+                current_tab_idx = 0
+                if self.tabs_control.selected_index is not None:
+                    current_tab_idx = self.tabs_control.selected_index
+
+                # Assuming standard tabs: Home, MBSE, UX, Docs
+                # If "MBSE" is in tabs list and selected
+                if (
+                    current_tab_idx < len(self.tabs_list)
+                    and self.tabs_list[current_tab_idx] == "MBSE"
+                ):
+                    self.on_tab_change(current_tab_idx)
+
+        project_dropdown = ft.Dropdown(
+            width=200,
+            text_size=14,
+            # content_padding=ft.padding.symmetric(horizontal=10, vertical=0),
+            # Padding(left, top, right, bottom)
+            content_padding=ft.Padding(10, 0, 10, 0),
+            # Default to active project
+            value=active_project_id,
+            options=project_options,
+            border_color=ft.Colors.TRANSPARENT,
+            bgcolor=ft.Colors.GREY_800,
+            color=ft.Colors.WHITE,
+            border_radius=5,
+            leading_icon=ft.Icons.FOLDER_OPEN,
+            tooltip="Select Active Project",
+        )
+        # Assign on_change separately to avoid __init__ issues if any
+        project_dropdown.on_change = on_project_change
+
+        return project_dropdown
+
+    def _toggle_theme(self, e):
+        new_mode = (
+            ft.ThemeMode.LIGHT
+            if self.page_ref.theme_mode == ft.ThemeMode.DARK
+            else ft.ThemeMode.DARK
+        )
+        self.page_ref.theme_mode = new_mode
+        e.control.icon = (
+            ft.Icons.DARK_MODE
+            if self.page_ref.theme_mode == ft.ThemeMode.LIGHT
+            else ft.Icons.LIGHT_MODE
+        )
+        self.page_ref.update()
+
+        # Update preference in DB and session
+        self.user.theme_preference = (
+            "LIGHT" if new_mode == ft.ThemeMode.LIGHT else "DARK"
+        )
+        update_user_theme_preference(self.user.id, self.user.theme_preference)
+
+    def _open_terminal(self, e):
+        if self.on_toggle_terminal:
+            self.on_toggle_terminal()
+        else:
+            # Fallback for now if not provided
+            print("Terminal toggle callback not provided")
+
+    def _build_content(self):
+        # Left: Icon, Name, Project Dropdown, Workspace Dropdown
+        project_dropdown = self._build_project_dropdown()
+
+        workspace_dropdown = ft.Dropdown(
+            width=200,
+            text_size=14,
+            content_padding=ft.Padding(10, 0, 10, 0),
+            value="main",
+            options=[
+                ft.dropdown.Option("main"),
+                ft.dropdown.Option("dev"),
+                ft.dropdown.Option("test"),
+                ft.dropdown.Option("+ Add New Workspace"),
             ],
+            border_color=ft.Colors.TRANSPARENT,
+            bgcolor=ft.Colors.GREY_800,
+            color=ft.Colors.WHITE,
+            border_radius=5,
+        )
+
+        left_section = ft.Row(
+            controls=[
+                ft.Container(
+                    content=ft.Image(
+                        src=self.logo_path,
+                        width=55,
+                        height=45,
+                        tooltip="Go to Home",
+                    ),
+                    on_click=lambda _: self.on_tab_change(0),
+                ),
+                ft.Container(width=10),
+                project_dropdown,
+                ft.Container(width=10),
+                workspace_dropdown,
+            ],
+            alignment=ft.MainAxisAlignment.START,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
-        self.bgcolor = ft.Colors.SURFACE_CONTAINER_HIGHEST
-        self.padding = Padding.symmetric(horizontal=16, vertical=8)
-        self.height = 60
-
-    def _build_logo(self) -> ft.Container:
-        """Build the application logo."""
-        logo_path = Path(__file__).parent.parent.parent / "engn" / "assets" / "images"
-        image = ft.Image(
-            src=str(logo_path / "engn_logo_core_tiny_transparent.png"),
-            width=40,
+        # Right: Search, Theme Toggle, Avatar
+        search_box = ft.TextField(
+            hint_text="Search...",
             height=40,
-            fit=BoxFit.CONTAIN,
-        )
-        return ft.Container(
-            content=image,
-            on_click=lambda _: self._handle_tab_click(0),
-            tooltip="Go to Home",
-        )
-
-    def _build_tabs(self) -> ft.Row:
-        """Build custom navigation tabs with underline selection."""
-        self._tab_containers = []
-        self._tab_texts = []
-
-        for i, label in enumerate(self.TAB_LABELS):
-            is_selected = i == self._selected_tab
-            text = ft.Text(
-                label,
-                color=ft.Colors.PRIMARY
-                if is_selected
-                else ft.Colors.ON_SURFACE_VARIANT,
-                weight=ft.FontWeight.W_500,
-            )
-            self._tab_texts.append(text)
-
-            container = ft.Container(
-                content=text,
-                width=self.TAB_WIDTH,
-                padding=Padding.symmetric(vertical=8),
-                alignment=ft.Alignment(0, 0),
-                border=Border(bottom=BorderSide(2, ft.Colors.PRIMARY))
-                if is_selected
-                else None,
-                on_click=lambda e, idx=i: self._handle_tab_click(idx),
-            )
-            self._tab_containers.append(container)
-
-        return ft.Row(
-            controls=cast(list[ft.Control], self._tab_containers),
-            spacing=0,
+            text_size=14,
+            content_padding=ft.Padding(10, 0, 0, 10),
+            width=200,
+            border_radius=20,
+            prefix_icon=ft.Icons.SEARCH,
+            bgcolor=ft.Colors.GREY_800,
+            border_color=ft.Colors.TRANSPARENT,
+            color=ft.Colors.WHITE,
+            hint_style=ft.TextStyle(color=ft.Colors.GREY_500),
         )
 
-    def _update_tab_styles(self) -> None:
-        """Update tab visual styles based on current selection."""
-        for i, (container, text) in enumerate(
-            zip(self._tab_containers, self._tab_texts)
-        ):
-            is_selected = i == self._selected_tab
-            text.color = (
-                ft.Colors.PRIMARY if is_selected else ft.Colors.ON_SURFACE_VARIANT
+        theme_icon = ft.IconButton(
+            ft.Icons.DARK_MODE
+            if self.page_ref.theme_mode == ft.ThemeMode.LIGHT
+            else ft.Icons.LIGHT_MODE,
+            on_click=self._toggle_theme,
+            tooltip="Toggle Dark Mode",
+            icon_color=ft.Colors.GREY_400,
+        )
+
+        # Avatar Menu (Logout, Admin)
+        menu_items = [
+            ft.PopupMenuItem(
+                content=ft.Text("Profile"),
+                icon=ft.Icons.PERSON,
+                on_click=lambda e: self.on_profile(),
             )
-            container.border = (
-                Border(bottom=BorderSide(2, ft.Colors.PRIMARY)) if is_selected else None
+        ]
+
+        if self.user.has_role(Role.ADMIN) and self.on_admin:
+            menu_items.append(
+                ft.PopupMenuItem(
+                    content=ft.Text("Admin Panel"),
+                    icon=ft.Icons.ADMIN_PANEL_SETTINGS,
+                    on_click=lambda e: self.on_admin(),  # type: ignore
+                )
             )
-            container.update()
 
-    def _handle_tab_click(self, index: int) -> None:
-        """Handle tab click."""
-        self._selected_tab = index
-        self._update_tab_styles()
-        self.on_tab_change(self._selected_tab)
+        menu_items.append(
+            ft.PopupMenuItem(
+                content=ft.Text("Logout"),
+                icon=ft.Icons.LOGOUT,
+                on_click=lambda e: self.on_logout(),
+            )
+        )
 
-    def _handle_tab_change(self, e: Any) -> None:
-        """Handle tab selection change (for compatibility with tests)."""
-        if hasattr(e, "control") and hasattr(e.control, "selected"):
-            selected = e.control.selected
-            if selected:
-                selected_label = list(selected)[0]
-                if selected_label in self.TAB_LABELS:
-                    self._selected_tab = self.TAB_LABELS.index(selected_label)
-        self.on_tab_change(self._selected_tab)
+        terminal_icon = ft.IconButton(
+            ft.Icons.TERMINAL,
+            on_click=self._open_terminal,
+            tooltip="Open Terminal",
+            icon_color=ft.Colors.GREY_400,
+        )
 
-    @property
-    def selected_index(self) -> int:
-        """Get the currently selected tab index."""
-        return self._selected_tab
+        avatar_menu = ft.PopupMenuButton(
+            content=self.avatar_control,
+            items=menu_items,
+        )
 
-    @selected_index.setter
-    def selected_index(self, value: int) -> None:
-        """Set the selected tab index."""
-        self._selected_tab = value
-        self._update_tab_styles()
+        right_section = ft.Row(
+            controls=[
+                search_box,
+                ft.Container(width=10),
+                terminal_icon,
+                ft.Container(width=5),
+                theme_icon,
+                ft.Container(width=10),
+                avatar_menu,
+            ],
+            alignment=ft.MainAxisAlignment.END,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
 
-    @property
-    def tabs(self) -> ft.Row:
-        """Get the tabs component for testing."""
-        return self.nav_tabs
+        banner_row = ft.Row(
+            controls=[left_section, self.tabs_control, right_section],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            expand=True,
+        )
 
-    @property
-    def tab_labels(self) -> list[str]:
-        """Get the list of tab labels."""
-        return self.TAB_LABELS
+        self.content = banner_row
+        self.padding = ft.padding.symmetric(horizontal=20, vertical=10)
+        self.bgcolor = "#36454F"  # Charcoal
+        self.shadow = ft.BoxShadow(
+            spread_radius=1,
+            blur_radius=5,
+            color=ft.Colors.BLACK12,
+            offset=ft.Offset(0, 2),
+        )

@@ -19,9 +19,16 @@ from sysengn.components import (
 class MainApp:
     """Main application controller for SysEngn."""
 
-    def __init__(self, page: ft.Page, config: ProjectConfig):
+    def __init__(
+        self,
+        page: ft.Page,
+        config: ProjectConfig,
+        authenticator: Authenticator | None = None,
+    ):
         self.page = page
         self.config = config
+        self.authenticator = authenticator or Authenticator(config)
+        self.user = self.authenticator.get_current_user()
         self.current_view_index = 0
 
         # Create domain views
@@ -33,9 +40,23 @@ class MainApp:
         ]
 
         # Create toolbar
+        logo_path = str(
+            Path(__file__).parent.parent
+            / "engn"
+            / "assets"
+            / "images"
+            / "engn_logo_core_tiny_transparent.png"
+        )
         self.toolbar = Toolbar(
             page=page,
+            user=self.user,
+            logo_path=logo_path,
             on_tab_change=self._on_tab_change,
+            tabs=["Home", "MBSE", "UX", "Docs"],
+            on_logout=self._on_logout,
+            on_profile=self._on_profile,
+            on_admin=self._on_admin,
+            on_toggle_terminal=self._on_toggle_terminal,
         )
 
         # Content area for domain views
@@ -54,6 +75,18 @@ class MainApp:
             spacing=0,
             expand=True,
         )
+
+    def _on_logout(self) -> None:
+        print("Logout clicked")
+
+    def _on_profile(self) -> None:
+        print("Profile clicked")
+
+    def _on_admin(self) -> None:
+        print("Admin clicked")
+
+    def _on_toggle_terminal(self) -> None:
+        print("Terminal toggled")
 
     def _on_tab_change(self, index: int) -> None:
         """Handle tab navigation change."""
@@ -76,7 +109,7 @@ def flet_main(page: ft.Page):
 
     def show_main_app():
         page.clean()
-        app = MainApp(page, config)
+        app = MainApp(page, config, authenticator)
         page.add(app.build())
         page.update()
 
@@ -85,7 +118,7 @@ def flet_main(page: ft.Page):
         page.add(LoginView(page, authenticator, show_main_app))
     else:
         # If no auth configured, go straight to main page
-        app = MainApp(page, config)
+        app = MainApp(page, config, authenticator)
         page.add(app.build())
 
 
