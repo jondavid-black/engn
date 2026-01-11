@@ -1,7 +1,5 @@
 import argparse
 import sys
-import shutil
-import subprocess
 from pathlib import Path
 from typing import List
 
@@ -10,32 +8,7 @@ from pydantic import ValidationError
 from engn.utils import get_version
 from engn.config import ProjectConfig
 from engn.data.storage import EngnDataModel
-
-
-def init_project(target_path: Path) -> None:
-    """Initialize a new engn project structure."""
-    if not target_path.exists():
-        target_path.mkdir(parents=True)
-
-    # Create directories
-    for dir_name in ["arch", "pm", "ux"]:
-        (target_path / dir_name).mkdir(exist_ok=True)
-
-    # Create engn.toml
-    config_path = target_path / "engn.toml"
-    with open(config_path, "w") as f:
-        f.write('arch_path = "arch"\n')
-        f.write('pm_path = "pm"\n')
-        f.write('ux_path = "ux"\n')
-
-    # Initialize beads if installed
-    if shutil.which("bd"):
-        subprocess.run(["bd", "init"], cwd=target_path, check=True)
-        print("Initialized beads for issue tracking")
-    else:
-        print("Warning: 'bd' (beads) not found. Issue tracking not initialized.")
-
-    print(f"Initialized engn project in {target_path}")
+from engn import project
 
 
 def run_check(target: Path | None, working_dir: Path) -> None:
@@ -133,7 +106,46 @@ def main() -> None:
     # Create subparsers for commands like 'init'
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # Init command
+    # Project command
+    project_parser = subparsers.add_parser("project", help="Manage engn projects")
+    project_subparsers = project_parser.add_subparsers(
+        dest="subcommand", help="Project subcommands"
+    )
+
+    # project new <name>
+    new_parser = project_subparsers.add_parser("new", help="Create a new project")
+    new_parser.add_argument("name", help="Name of the new project")
+
+    # project clone <url>
+    clone_parser = project_subparsers.add_parser(
+        "clone", help="Clone an existing project"
+    )
+    clone_parser.add_argument("url", help="URL of the project to clone")
+    clone_parser.add_argument("--name", help="Optional name for the project directory")
+
+    # project delete <name>
+    delete_parser = project_subparsers.add_parser("delete", help="Delete a project")
+    delete_parser.add_argument("name", help="Name of the project to delete")
+    delete_parser.add_argument(
+        "-y", "--yes", action="store_true", help="Confirm deletion without prompting"
+    )
+
+    # project init <name>
+    init_proj_parser = project_subparsers.add_parser(
+        "init", help="Initialize an existing project with engn"
+    )
+    init_proj_parser.add_argument(
+        "name", help="Name of the project directory to initialize"
+    )
+
+    # project status <name>
+    status_parser = project_subparsers.add_parser("status", help="Show project status")
+    status_parser.add_argument("name", help="Name of the project")
+
+    # project list
+    project_subparsers.add_parser("list", help="List all projects")
+
+    # Top-level Init command (kept for backward compatibility, but uses new logic)
     init_parser = subparsers.add_parser("init", help="Initialize a new engn project")
     init_parser.add_argument(
         "path",
@@ -166,10 +178,79 @@ def main() -> None:
     # Common argument handling
     working_dir = Path(args.working_directory).resolve()
 
+    if args.command == "project":
+        if not args.subcommand:
+            project_parser.print_help()
+            sys.exit(0)
+
+        if args.subcommand == "new":
+            try:
+                project.create_new_project(args.name, working_dir)
+                print(f"Created new project: {args.name}")
+            except Exception as e:
+                print(f"Error: {e}")
+                sys.exit(1)
+
+        elif args.subcommand == "clone":
+            try:
+                project.clone_project(args.url, working_dir, args.name)
+                print(f"Cloned project from {args.url}")
+            except Exception as e:
+                print(f"Error: {e}")
+                sys.exit(1)
+
+        elif args.subcommand == "delete":
+            if not args.yes:
+                confirm = input(
+                    f"Are you sure you want to delete project '{args.name}'? (y/N): "
+                )
+                if confirm.lower() != "y":
+                    print("Deletion cancelled.")
+                    sys.exit(0)
+
+            if project.delete_project(args.name, working_dir):
+                print(f"Deleted project: {args.name}")
+            else:
+                print(f"Error: Project '{args.name}' not found.")
+                sys.exit(1)
+
+        elif args.subcommand == "init":
+            target_path = working_dir / args.name
+            if not target_path.exists():
+                print(f"Error: Directory '{args.name}' not found.")
+                sys.exit(1)
+            project.init_project_structure(target_path)
+            print(f"Initialized project: {args.name}")
+
+        elif args.subcommand == "list":
+            projects = project.list_projects(working_dir)
+            if not projects:
+                print("No projects found.")
+            else:
+                for p in projects:
+                    print(p)
+
+        elif args.subcommand == "status":
+            status = project.get_project_status(args.name, working_dir)
+            if not status["exists"]:
+                print(f"Project '{args.name}' not found.")
+                sys.exit(1)
+
+            print(f"Project: {status['name']}")
+            print(f"Path: {status['path']}")
+            print(f"Git: {'Yes' if status['is_git'] else 'No'}")
+            print(f"Beads: {'Yes' if status['is_beads'] else 'No'}")
+            print(f"Engn: {'Yes' if status['is_engn'] else 'No'}")
+            if "git_status" in status:
+                print(f"Git Status: {status['git_status']}")
+
+        sys.exit(0)
+
     if args.command == "init":
         # Resolve the path relative to current working directory
         target_path = Path.cwd() / args.path
-        init_project(target_path)
+        project.init_project_structure(target_path)
+        print(f"Initialized engn project in {target_path}")
         sys.exit(0)
 
     if args.command == "check":

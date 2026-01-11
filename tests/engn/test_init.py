@@ -30,9 +30,10 @@ def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
 
     # Check content of engn.toml
     content = config_file.read_text()
-    assert 'arch_path = "arch"' in content
-    assert 'pm_path = "pm"' in content
-    assert 'ux_path = "ux"' in content
+    assert "[paths]" in content
+    assert 'sysengn = "arch"' in content
+    assert 'pm = "pm"' in content
+    assert 'ux = "ux"' in content
 
     # Check output
     captured = capsys.readouterr()
