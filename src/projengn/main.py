@@ -64,7 +64,7 @@ class ProjEngnApp:
             user=self.user,
             logo_path=logo_path,
             on_tab_change=self._on_tab_change,
-            tabs=["Projects", "Baseline", "Actual", "Analyze", "Docs"],
+            tabs=["Home", "Baseline", "Actual", "Analyze", "Docs"],
             on_logout=self._on_logout,
             on_profile=self._on_profile,
             working_directory=self.working_directory,
