@@ -6,6 +6,14 @@ from engn.core.auth import (
     create_user,
     update_user_theme_preference,
     update_user_profile,
+    remove_user,
+    list_users,
+    get_user_by_email,
+    add_role_to_user,
+    remove_role_from_user,
+    get_all_roles,
+    add_role,
+    remove_role,
 )
 
 
@@ -88,3 +96,115 @@ def test_user_has_permission():
 
     assert admin.has_permission("anything")
     assert not user.has_permission("anything")
+
+
+def test_remove_user(temp_config):
+    create_user("test@example.com", "password123")
+    assert remove_user("test@example.com") is True
+    # Should return False if user doesn't exist
+    assert remove_user("test@example.com") is False
+
+
+def test_remove_user_not_found(temp_config):
+    assert remove_user("nonexistent@example.com") is False
+
+
+def test_list_users(temp_config):
+    create_user("user1@example.com", "pass1", name="User One")
+    create_user("user2@example.com", "pass2", name="User Two")
+
+    users = list_users()
+    assert len(users) == 2
+    emails = [u.email for u in users]
+    assert "user1@example.com" in emails
+    assert "user2@example.com" in emails
+
+
+def test_list_users_empty(temp_config):
+    users = list_users()
+    assert len(users) == 0
+
+
+def test_get_user_by_email(temp_config):
+    create_user("test@example.com", "password123", name="Test User")
+
+    user = get_user_by_email("test@example.com")
+    assert user is not None
+    assert user.email == "test@example.com"
+    assert user.name == "Test User"
+
+
+def test_get_user_by_email_not_found(temp_config):
+    user = get_user_by_email("nonexistent@example.com")
+    assert user is None
+
+
+def test_add_role_to_user(temp_config):
+    create_user("test@example.com", "password123")
+
+    result = add_role_to_user("test@example.com", Role.ADMIN)
+    assert result is True
+
+    user = get_user_by_email("test@example.com")
+    assert user is not None
+    assert Role.ADMIN in user.roles
+
+
+def test_add_role_to_user_already_has_role(temp_config):
+    create_user("test@example.com", "password123", roles=[Role.USER])
+
+    # Adding USER again should succeed but not duplicate
+    result = add_role_to_user("test@example.com", Role.USER)
+    assert result is True
+
+    user = get_user_by_email("test@example.com")
+    assert user is not None
+    assert user.roles.count(Role.USER) == 1
+
+
+def test_add_role_to_user_not_found(temp_config):
+    result = add_role_to_user("nonexistent@example.com", Role.ADMIN)
+    assert result is False
+
+
+def test_remove_role_from_user(temp_config):
+    create_user("test@example.com", "password123", roles=[Role.ADMIN, Role.USER])
+
+    result = remove_role_from_user("test@example.com", Role.ADMIN)
+    assert result is True
+
+    user = get_user_by_email("test@example.com")
+    assert user is not None
+    assert Role.ADMIN not in user.roles
+    assert Role.USER in user.roles
+
+
+def test_remove_role_from_user_doesnt_have_role(temp_config):
+    create_user("test@example.com", "password123", roles=[Role.USER])
+
+    # Removing a role the user doesn't have should succeed silently
+    result = remove_role_from_user("test@example.com", Role.ADMIN)
+    assert result is True
+
+
+def test_remove_role_from_user_not_found(temp_config):
+    result = remove_role_from_user("nonexistent@example.com", Role.ADMIN)
+    assert result is False
+
+
+def test_get_all_roles():
+    roles = get_all_roles()
+    assert Role.ADMIN in roles
+    assert Role.USER in roles
+    assert Role.GUEST in roles
+    assert len(roles) == 3
+
+
+def test_add_role_raises_error():
+    with pytest.raises(ValueError, match="Cannot add role"):
+        add_role("REVIEWER")
+
+
+def test_remove_role_raises_error():
+    with pytest.raises(ValueError, match="Cannot remove role"):
+        remove_role("ADMIN")

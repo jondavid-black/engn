@@ -9,7 +9,7 @@ from engn.utils import get_version
 from engn.config import ProjectConfig
 from engn.core.auth import get_oauth_providers, User as EngnUser
 from sysengn.auth import Authenticator, User as SysEngnUser
-from sysengn.views import LoginView
+from sysengn.views import LoginView, AdminView, UserProfileView
 from sysengn.pages.home import HomeDomainPage
 from sysengn.components import (
     Toolbar,
@@ -89,10 +89,51 @@ class MainApp:
         print("Logout clicked")
 
     def _on_profile(self) -> None:
-        print("Profile clicked")
+        """Show user profile page."""
+        profile_view = UserProfileView(
+            page=self.page,
+            user=self.user,
+            on_back=self._return_from_profile,
+            on_save=self._on_profile_saved,
+        )
+        self._previous_view = self.content_area.content
+        self._previous_view_index = self.current_view_index
+        self.content_area.content = profile_view
+        self.page.update()
+
+    def _return_from_profile(self) -> None:
+        """Return from profile page to previous view."""
+        if hasattr(self, "_previous_view") and self._previous_view:
+            self.content_area.content = self._previous_view
+        else:
+            self.content_area.content = self.views[0]
+        self.page.update()
+
+    def _on_profile_saved(self) -> None:
+        """Handle profile save - refresh the toolbar avatar."""
+        self.toolbar.avatar_control = self.toolbar._build_avatar()
+        self.toolbar._build_content()
+        self.toolbar.update()
 
     def _on_admin(self) -> None:
-        print("Admin clicked")
+        """Show admin panel."""
+        admin_view = AdminView(
+            page=self.page,
+            user=self.user,
+            on_back=self._return_from_admin,
+        )
+        self._previous_view = self.content_area.content
+        self._previous_view_index = self.current_view_index
+        self.content_area.content = admin_view
+        self.page.update()
+
+    def _return_from_admin(self) -> None:
+        """Return from admin panel to previous view."""
+        if hasattr(self, "_previous_view") and self._previous_view:
+            self.content_area.content = self._previous_view
+        else:
+            self.content_area.content = self.views[0]
+        self.page.update()
 
     def _on_toggle_terminal(self) -> None:
         print("Terminal toggled")

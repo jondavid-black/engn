@@ -1,6 +1,19 @@
 import flet as ft
 from typing import Callable, Any, Optional
-from engn.core.auth import User, authenticate_local_user, update_user_profile
+from engn.core.auth import (
+    User,
+    Role,
+    authenticate_local_user,
+    update_user_profile,
+    create_user,
+    remove_user,
+    list_users,
+    add_role_to_user,
+    remove_role_from_user,
+)
+from argon2 import PasswordHasher
+
+ph = PasswordHasher()
 
 
 class LoginView(ft.Column):
@@ -322,3 +335,370 @@ class UserProfileView(ft.Column):
             self.on_save()
 
         self.on_back()
+
+
+class AdminView(ft.Column):
+    """Admin panel for user and role management."""
+
+    def __init__(
+        self,
+        page: ft.Page,
+        user: User,
+        on_back: Callable[[], None],
+    ):
+        super().__init__()
+        self.page_ref = page
+        self.user = user
+        self.on_back = on_back
+
+        self.alignment = ft.MainAxisAlignment.START
+        self.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+        self.expand = True
+        self.scroll = ft.ScrollMode.AUTO
+
+        # User list data table
+        self.users_table = self._build_users_table()
+
+        # Add user form fields
+        self.new_email_field = ft.TextField(
+            label="Email",
+            width=250,
+            on_submit=self._add_user,
+        )
+        self.new_name_field = ft.TextField(
+            label="Display Name",
+            width=250,
+        )
+        self.new_password_field = ft.TextField(
+            label="Password",
+            password=True,
+            can_reveal_password=True,
+            width=250,
+        )
+        self.new_password_confirm_field = ft.TextField(
+            label="Confirm Password",
+            password=True,
+            can_reveal_password=True,
+            width=250,
+            on_submit=self._add_user,
+        )
+        self.new_role_dropdown = ft.Dropdown(
+            label="Initial Role",
+            width=150,
+            options=[ft.dropdown.Option(r.value) for r in Role],
+            value=Role.USER.value,
+        )
+
+        self.controls = self._build_controls()
+
+    def _build_controls(self) -> list[ft.Control]:
+        return [
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Row(
+                            controls=[
+                                ft.IconButton(
+                                    ft.Icons.ARROW_BACK,
+                                    on_click=lambda _: self.on_back(),
+                                    tooltip="Back",
+                                ),
+                                ft.Text(
+                                    "Admin Panel",
+                                    size=24,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.START,
+                        ),
+                        ft.Divider(),
+                        # User Management Section
+                        ft.Text(
+                            "User Management",
+                            size=18,
+                            weight=ft.FontWeight.W_600,
+                        ),
+                        ft.Container(height=10),
+                        # Add User Form
+                        ft.Container(
+                            content=ft.Column(
+                                controls=[
+                                    ft.Text("Add New User", size=14, italic=True),
+                                    ft.Row(
+                                        controls=[
+                                            self.new_email_field,
+                                            self.new_name_field,
+                                        ],
+                                        wrap=True,
+                                    ),
+                                    ft.Row(
+                                        controls=[
+                                            self.new_password_field,
+                                            self.new_password_confirm_field,
+                                        ],
+                                        wrap=True,
+                                    ),
+                                    ft.Row(
+                                        controls=[
+                                            self.new_role_dropdown,
+                                            ft.FilledButton(
+                                                "Add User",
+                                                icon=ft.Icons.PERSON_ADD,
+                                                on_click=self._add_user,
+                                            ),
+                                        ],
+                                    ),
+                                ],
+                                spacing=10,
+                            ),
+                            padding=15,
+                            bgcolor=ft.Colors.GREY_900,
+                            border_radius=8,
+                        ),
+                        ft.Container(height=20),
+                        # Users Table
+                        ft.Text("Existing Users", size=14, italic=True),
+                        self.users_table,
+                        ft.Container(height=20),
+                        # Available Roles Info
+                        ft.Text(
+                            "Available Roles",
+                            size=18,
+                            weight=ft.FontWeight.W_600,
+                        ),
+                        ft.Container(height=10),
+                        ft.Container(
+                            content=ft.Column(
+                                controls=[
+                                    ft.Row(
+                                        controls=[
+                                            ft.Icon(
+                                                ft.Icons.ADMIN_PANEL_SETTINGS,
+                                                color=ft.Colors.RED_400,
+                                            ),
+                                            ft.Text("ADMIN", weight=ft.FontWeight.BOLD),
+                                            ft.Text(
+                                                "- Full system access, user management"
+                                            ),
+                                        ],
+                                    ),
+                                    ft.Row(
+                                        controls=[
+                                            ft.Icon(
+                                                ft.Icons.PERSON,
+                                                color=ft.Colors.BLUE_400,
+                                            ),
+                                            ft.Text("USER", weight=ft.FontWeight.BOLD),
+                                            ft.Text("- Standard user access"),
+                                        ],
+                                    ),
+                                    ft.Row(
+                                        controls=[
+                                            ft.Icon(
+                                                ft.Icons.PERSON_OUTLINE,
+                                                color=ft.Colors.GREY_400,
+                                            ),
+                                            ft.Text("GUEST", weight=ft.FontWeight.BOLD),
+                                            ft.Text("- Limited read-only access"),
+                                        ],
+                                    ),
+                                ],
+                                spacing=8,
+                            ),
+                            padding=15,
+                            bgcolor=ft.Colors.GREY_900,
+                            border_radius=8,
+                        ),
+                    ],
+                    spacing=5,
+                ),
+                padding=30,
+                expand=True,
+            ),
+        ]
+
+    def _build_users_table(self) -> ft.DataTable:
+        users = list_users()
+        rows = []
+
+        for u in users:
+            is_current_user = u.id == self.user.id
+
+            # Role management buttons
+            role_buttons = []
+            for role in Role:
+                has_role = role in u.roles
+                role_buttons.append(
+                    ft.IconButton(
+                        icon=ft.Icons.CHECK_CIRCLE
+                        if has_role
+                        else ft.Icons.CIRCLE_OUTLINED,
+                        icon_color=ft.Colors.GREEN_400
+                        if has_role
+                        else ft.Colors.GREY_600,
+                        tooltip=f"{'Remove' if has_role else 'Add'} {role.value}",
+                        on_click=lambda e,
+                        email=u.email,
+                        r=role,
+                        has=has_role: self._toggle_role(email, r, has),
+                        disabled=is_current_user and role == Role.ADMIN,
+                    )
+                )
+
+            rows.append(
+                ft.DataRow(
+                    cells=[
+                        ft.DataCell(ft.Text(u.email)),
+                        ft.DataCell(ft.Text(u.name or "-")),
+                        ft.DataCell(
+                            ft.Row(
+                                controls=[
+                                    ft.Text(role.value, size=12) for role in Role
+                                ],
+                                spacing=25,
+                            )
+                        ),
+                        ft.DataCell(ft.Row(controls=role_buttons, spacing=0)),
+                        ft.DataCell(
+                            ft.IconButton(
+                                icon=ft.Icons.DELETE,
+                                icon_color=ft.Colors.RED_400,
+                                tooltip="Remove User",
+                                on_click=lambda e,
+                                email=u.email: self._confirm_remove_user(email),
+                                disabled=is_current_user,
+                            )
+                        ),
+                    ],
+                )
+            )
+
+        return ft.DataTable(
+            columns=[
+                ft.DataColumn(label=ft.Text("Email")),
+                ft.DataColumn(label=ft.Text("Name")),
+                ft.DataColumn(label=ft.Text("Roles")),
+                ft.DataColumn(label=ft.Text("Toggle Roles")),
+                ft.DataColumn(label=ft.Text("Actions")),
+            ],
+            rows=rows,
+            border=ft.Border.all(1, ft.Colors.GREY_700),
+            border_radius=8,
+            vertical_lines=ft.BorderSide(1, ft.Colors.GREY_800),
+            horizontal_lines=ft.BorderSide(1, ft.Colors.GREY_800),
+        )
+
+    def _refresh_users_table(self):
+        new_table = self._build_users_table()
+        # Find and replace the table in controls
+        container: Any = self.controls[0]
+        column: Any = container.content
+        for i, control in enumerate(column.controls):
+            if isinstance(control, ft.DataTable):
+                column.controls[i] = new_table
+                self.users_table = new_table
+                break
+        self.update()
+
+    def _add_user(self, e):
+        email = self.new_email_field.value
+        name = self.new_name_field.value
+        password = self.new_password_field.value
+        confirm = self.new_password_confirm_field.value
+        role_value = self.new_role_dropdown.value
+
+        # Validation
+        if not email:
+            self._show_error("Email is required")
+            return
+
+        if not password:
+            self._show_error("Password is required")
+            return
+
+        if password != confirm:
+            self._show_error("Passwords do not match")
+            return
+
+        if len(password) < 4:
+            self._show_error("Password must be at least 4 characters")
+            return
+
+        try:
+            roles = [Role(role_value)] if role_value else [Role.USER]
+            create_user(email, password, name or "", roles)
+            self._show_success(f"User '{email}' created successfully")
+
+            # Clear form
+            self.new_email_field.value = ""
+            self.new_name_field.value = ""
+            self.new_password_field.value = ""
+            self.new_password_confirm_field.value = ""
+            self.new_role_dropdown.value = Role.USER.value
+
+            self._refresh_users_table()
+        except ValueError as ex:
+            self._show_error(str(ex))
+
+    def _toggle_role(self, email: str, role: Role, currently_has: bool):
+        try:
+            if currently_has:
+                remove_role_from_user(email, role)
+                self._show_success(f"Removed {role.value} from {email}")
+            else:
+                add_role_to_user(email, role)
+                self._show_success(f"Added {role.value} to {email}")
+            self._refresh_users_table()
+        except Exception as ex:
+            self._show_error(str(ex))
+
+    def _confirm_remove_user(self, email: str):
+        def do_remove(e):
+            dialog.open = False
+            self.page_ref.update()
+            self._remove_user(email)
+
+        def cancel(e):
+            dialog.open = False
+            self.page_ref.update()
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Confirm Deletion"),
+            content=ft.Text(f"Are you sure you want to remove user '{email}'?"),
+            actions=[
+                ft.TextButton("Cancel", on_click=cancel),
+                ft.TextButton("Delete", on_click=do_remove),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.page_ref.overlay.append(dialog)
+        dialog.open = True
+        self.page_ref.update()
+
+    def _remove_user(self, email: str):
+        if remove_user(email):
+            self._show_success(f"User '{email}' removed")
+            self._refresh_users_table()
+        else:
+            self._show_error(f"Failed to remove user '{email}'")
+
+    def _show_error(self, message: str):
+        self.page_ref.overlay.append(
+            ft.SnackBar(
+                ft.Text(message),
+                bgcolor=ft.Colors.RED_900,
+                open=True,
+            )
+        )
+        self.page_ref.update()
+
+    def _show_success(self, message: str):
+        self.page_ref.overlay.append(
+            ft.SnackBar(
+                ft.Text(message),
+                bgcolor=ft.Colors.GREEN_900,
+                open=True,
+            )
+        )
+        self.page_ref.update()
