@@ -36,10 +36,9 @@ Feature: Check Command
     And the output should contain "test_data/mixed/nested/invalid.jsonl"
 
   Scenario: Check default paths from configuration
-    Given a file "engn.toml" with content:
+    Given a file "engn.jsonl" with content:
       """
-      [paths]
-      pm = "data_pm"
+      {"engn_type": "ProjectConfig", "pm_path": "data_pm"}
       """
     And a directory "data_pm"
     And a file "data_pm/bad.jsonl" with content:

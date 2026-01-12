@@ -20,7 +20,7 @@ def test_initialize_project(tmp_path):
     pm.initialize_project(project_name)
 
     # Verify initialized
-    assert (project_path / "engn.toml").exists()
+    assert (project_path / "engn.jsonl").exists()
     assert (project_path / "arch").exists()
     assert (project_path / "pm").exists()
     assert (project_path / "ux").exists()

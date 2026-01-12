@@ -6,18 +6,18 @@ Feature: Initialize Engn Project
   Scenario: Initialize in current directory
     Given the engn application is installed
     When I run "engn proj init"
-    Then a file named "engn.toml" should exist
+    Then a file named "engn.jsonl" should exist
     And a directory named "arch" should exist
     And a directory named "pm" should exist
     And a directory named "ux" should exist
-    And the file "engn.toml" should contain "sysengn"
+    And the file "engn.jsonl" should contain "sysengn_path"
     And a directory named ".beads" should exist
 
 
   Scenario: Initialize in a specific directory
     Given I create a temporary directory named "test_project"
     When I run "engn proj init test_project"
-    Then a file named "test_project/engn.toml" should exist
+    Then a file named "test_project/engn.jsonl" should exist
     And a directory named "test_project/arch" should exist
     And a directory named "test_project/pm" should exist
     And a directory named "test_project/ux" should exist

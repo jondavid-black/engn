@@ -20,7 +20,6 @@ from flet.auth.providers import GitHubOAuthProvider, GoogleOAuthProvider
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
-from pydantic import BaseModel
 
 from engn.data.storage import JSONLStorage
 

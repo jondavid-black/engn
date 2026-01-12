@@ -7,7 +7,7 @@ Feature: Project Management and Initialization
     Given I use the ProjectManager to create a project from "https://github.com/jondavid-black/engn-test"
     Then the project "engn-test" should be listed in the project list
     When I run "engn proj init engn-test"
-    Then a file named "engn-test/engn.toml" should exist
+    Then a file named "engn-test/engn.jsonl" should exist
     And a directory named "engn-test/arch" should exist
     And a directory named "engn-test/pm" should exist
     And a directory named "engn-test/ux" should exist
