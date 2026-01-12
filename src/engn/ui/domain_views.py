@@ -1,7 +1,7 @@
-"""Reusable domain views for engn applications.
+"""Reusable domain views for Digital Engine applications.
 
 This module provides shared domain views that can be used across
-sysengn, projengn, and other engn applications.
+sysengn, projengn, and other Digital Engine applications.
 """
 
 from typing import Any
@@ -19,7 +19,7 @@ class DocsView(ft.Container):
 
     def __init__(
         self,
-        app_name: str = "Engn",
+        app_name: str = "Digital Engine",
         initial_content: str | None = None,
     ):
         """Initialize the documentation view.

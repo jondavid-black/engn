@@ -1,6 +1,6 @@
 # Engn CLI
 
-The `engn` CLI provides core utilities for engineering and program management baselines.
+The `engn` CLI provides core utilities for engineering and program management baselines within the Digital Engine suite.
 
 ## Usage
 

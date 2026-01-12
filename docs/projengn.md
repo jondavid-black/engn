@@ -1,6 +1,6 @@
 # ProjEngn
 
-ProjEngn is a program management tool.
+ProjEngn is the program management tool in the Digital Engine suite.
 
 ## Usage
 

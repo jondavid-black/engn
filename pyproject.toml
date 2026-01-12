@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "engn"
 version = "0.1.0"
-description = "The Intelligent Engine for Building Systems"
+description = "Digital Engine - The Intelligent Engine for Building Systems"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -68,7 +68,7 @@ paths = ["features/engn", "features/sysengn", "features/projengn"]
 format = ["pretty"]
 
 [tool.flet]
-product_name = "SysEngn"
+product_name = "Digital Engine"
 description = "Intelligent Workspace for Building Digital Systems"
 path = "src"
 

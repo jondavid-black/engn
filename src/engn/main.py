@@ -124,7 +124,7 @@ def run_check(target: Path | None, working_dir: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="The Intelligent Engine for Building Systems"
+        description="Digital Engine - The Intelligent Engine for Building Systems"
     )
     parser.add_argument(
         "--version", action="store_true", help="Show the version and exit"

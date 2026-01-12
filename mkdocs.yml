@@ -1,9 +1,9 @@
-site_name: Engn Documentation
+site_name: Digital Engine
 theme:
   name: material
 
 nav:
-  - Home: index.md
+  - Digital Engine: index.md
   - Engn: engn.md
   - SysEngn: sysengn.md
   - ProjEngn: projengn.md

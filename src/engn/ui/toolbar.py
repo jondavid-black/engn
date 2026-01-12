@@ -1,7 +1,7 @@
 """Toolbar component for Flet applications.
 
 This module provides a reusable toolbar/app bar that can be used across
-sysengn, projengn, and other engn applications.
+sysengn, projengn, and other Digital Engine applications.
 """
 
 from pathlib import Path

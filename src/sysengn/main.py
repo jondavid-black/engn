@@ -208,9 +208,7 @@ def flet_main(page: ft.Page, working_directory: Optional[Path] = None):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="SysEngn - Model-Based System Engineering Tool"
-    )
+    parser = argparse.ArgumentParser(description="SysEngn - Digital Engine MBSE Tool")
     parser.add_argument(
         "--version", action="store_true", help="Show the version and exit"
     )

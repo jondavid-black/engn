@@ -222,7 +222,9 @@ def flet_main(page: ft.Page, working_directory: Optional[Path] = None):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="ProjEngn - Program Management Tool")
+    parser = argparse.ArgumentParser(
+        description="ProjEngn - Digital Engine Program Management Tool"
+    )
     parser.add_argument(
         "--version", action="store_true", help="Show the version and exit"
     )
