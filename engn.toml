@@ -8,3 +8,6 @@ roles = [
     "USER",
 ]
 theme_preference = "DARK"
+first_name = "JD"
+last_name = "Black"
+preferred_color = "green"
