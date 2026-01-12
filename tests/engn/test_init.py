@@ -4,8 +4,8 @@ from engn.main import main
 
 
 def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
-    # Mock sys.argv to simulate running 'engn init'
-    with patch("sys.argv", ["engn", "init"]):
+    # Mock sys.argv to simulate running 'engn proj init'
+    with patch("sys.argv", ["engn", "proj", "init"]):
         # Mock Path.cwd to return the temporary directory
         with patch("pathlib.Path.cwd", return_value=tmp_path):
             with patch("shutil.which", return_value="/usr/bin/bd"):
@@ -41,8 +41,8 @@ def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
 
 
 def test_engn_init_command_without_beads_installed(tmp_path, capsys):
-    # Mock sys.argv to simulate running 'engn init'
-    with patch("sys.argv", ["engn", "init"]):
+    # Mock sys.argv to simulate running 'engn proj init'
+    with patch("sys.argv", ["engn", "proj", "init"]):
         with patch("pathlib.Path.cwd", return_value=tmp_path):
             # Mock shutil.which to return None, simulating 'bd' not found
             with patch("shutil.which", return_value=None):

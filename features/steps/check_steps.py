@@ -11,7 +11,7 @@ def step_run_check_with_path(context, path):
     project_root = Path(__file__).resolve().parents[2]
     src_path = project_root / "src"
 
-    cmd = [sys.executable, "-m", "engn.main", "check", path]
+    cmd = [sys.executable, "-m", "engn.main", "proj", "check", path]
 
     env = os.environ.copy()
     env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")
@@ -30,7 +30,7 @@ def step_run_check_default(context):
     project_root = Path(__file__).resolve().parents[2]
     src_path = project_root / "src"
 
-    cmd = [sys.executable, "-m", "engn.main", "check"]
+    cmd = [sys.executable, "-m", "engn.main", "proj", "check"]
 
     env = os.environ.copy()
     env["PYTHONPATH"] = str(src_path) + os.pathsep + env.get("PYTHONPATH", "")

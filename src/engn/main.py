@@ -133,43 +133,55 @@ def main() -> None:
     # Create subparsers for commands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # new <name>
-    new_parser = subparsers.add_parser("new", help="Create a new project")
-    new_parser.add_argument("name", help="Name of the new project")
+    # proj command with subcommands
+    proj_parser = subparsers.add_parser("proj", help="Project management commands")
+    proj_subparsers = proj_parser.add_subparsers(dest="proj_command")
 
-    # clone <url>
-    clone_parser = subparsers.add_parser("clone", help="Clone an existing project")
-    clone_parser.add_argument("url", help="URL of the project to clone")
-    clone_parser.add_argument("--name", help="Optional name for the project directory")
+    # proj new <name>
+    proj_new_parser = proj_subparsers.add_parser("new", help="Create a new project")
+    proj_new_parser.add_argument("name", help="Name of the new project")
 
-    # delete <name>
-    delete_parser = subparsers.add_parser("delete", help="Delete a project")
-    delete_parser.add_argument("name", help="Name of the project to delete")
-    delete_parser.add_argument(
+    # proj clone <url>
+    proj_clone_parser = proj_subparsers.add_parser(
+        "clone", help="Clone an existing project"
+    )
+    proj_clone_parser.add_argument("url", help="URL of the project to clone")
+    proj_clone_parser.add_argument(
+        "--name", help="Optional name for the project directory"
+    )
+
+    # proj delete <name>
+    proj_delete_parser = proj_subparsers.add_parser("delete", help="Delete a project")
+    proj_delete_parser.add_argument("name", help="Name of the project to delete")
+    proj_delete_parser.add_argument(
         "-y", "--yes", action="store_true", help="Confirm deletion without prompting"
     )
 
-    # init [path]
-    init_parser = subparsers.add_parser(
+    # proj init [path]
+    proj_init_parser = proj_subparsers.add_parser(
         "init", help="Initialize a project structure in a directory"
     )
-    init_parser.add_argument(
+    proj_init_parser.add_argument(
         "path",
         nargs="?",
         default=".",
         help="Path or name of project to initialize (default: current directory)",
     )
 
-    # status <name>
-    status_parser = subparsers.add_parser("status", help="Show project status")
-    status_parser.add_argument("name", help="Name of the project")
+    # proj status <name>
+    proj_status_parser = proj_subparsers.add_parser(
+        "status", help="Show project status"
+    )
+    proj_status_parser.add_argument("name", help="Name of the project")
 
-    # list
-    subparsers.add_parser("list", help="List all projects")
+    # proj list
+    proj_subparsers.add_parser("list", help="List all projects")
 
-    # check command
-    check_parser = subparsers.add_parser("check", help="Check validity of data files")
-    check_parser.add_argument(
+    # proj check
+    proj_check_parser = proj_subparsers.add_parser(
+        "check", help="Check validity of data files"
+    )
+    proj_check_parser.add_argument(
         "target",
         nargs="?",
         help="Path to JSONL file or directory to check (default: check all configured paths)",
@@ -245,85 +257,90 @@ def main() -> None:
     # Common argument handling
     working_dir = Path(args.working_directory).resolve()
 
-    if args.command == "new":
-        try:
-            project.create_new_project(args.name, working_dir)
-            print(f"Created new project: {args.name}")
-            sys.exit(0)
-        except Exception as e:
-            print(f"Error: {e}")
-            sys.exit(1)
-
-    elif args.command == "clone":
-        try:
-            project.clone_project(args.url, working_dir, args.name)
-            print(f"Cloned project from {args.url}")
-            sys.exit(0)
-        except Exception as e:
-            print(f"Error: {e}")
-            sys.exit(1)
-
-    elif args.command == "delete":
-        if not args.yes:
-            confirm = input(
-                f"Are you sure you want to delete project '{args.name}'? (y/N): "
-            )
-            if confirm.lower() != "y":
-                print("Deletion cancelled.")
+    if args.command == "proj":
+        if args.proj_command == "new":
+            try:
+                project.create_new_project(args.name, working_dir)
+                print(f"Created new project: {args.name}")
                 sys.exit(0)
+            except Exception as e:
+                print(f"Error: {e}")
+                sys.exit(1)
 
-        if project.delete_project(args.name, working_dir):
-            print(f"Deleted project: {args.name}")
+        elif args.proj_command == "clone":
+            try:
+                project.clone_project(args.url, working_dir, args.name)
+                print(f"Cloned project from {args.url}")
+                sys.exit(0)
+            except Exception as e:
+                print(f"Error: {e}")
+                sys.exit(1)
+
+        elif args.proj_command == "delete":
+            if not args.yes:
+                confirm = input(
+                    f"Are you sure you want to delete project '{args.name}'? (y/N): "
+                )
+                if confirm.lower() != "y":
+                    print("Deletion cancelled.")
+                    sys.exit(0)
+
+            if project.delete_project(args.name, working_dir):
+                print(f"Deleted project: {args.name}")
+                sys.exit(0)
+            else:
+                print(f"Error: Project '{args.name}' not found.")
+                sys.exit(1)
+
+        elif args.proj_command == "init":
+            # If path looks like a simple name, try resolving it in working_dir
+            # Otherwise, resolve it relative to current working directory
+            target_path = Path(args.path)
+            if not target_path.is_absolute() and len(target_path.parts) == 1:
+                target_path = working_dir / args.path
+            else:
+                target_path = Path.cwd() / args.path
+
+            if not target_path.exists():
+                print(f"Error: Directory '{target_path}' not found.")
+                sys.exit(1)
+
+            project.init_project_structure(target_path)
+            print(f"Initialized engn project in {target_path}")
             sys.exit(0)
+
+        elif args.proj_command == "list":
+            projects = project.list_projects(working_dir)
+            if not projects:
+                print("No projects found.")
+            else:
+                for p in projects:
+                    print(p)
+            sys.exit(0)
+
+        elif args.proj_command == "status":
+            status = project.get_project_status(args.name, working_dir)
+            if not status["exists"]:
+                print(f"Project '{args.name}' not found.")
+                sys.exit(1)
+
+            print(f"Project: {status['name']}")
+            print(f"Path: {status['path']}")
+            print(f"Git: {'Yes' if status['is_git'] else 'No'}")
+            print(f"Beads: {'Yes' if status['is_beads'] else 'No'}")
+            print(f"Engn: {'Yes' if status['is_engn'] else 'No'}")
+            if "git_status" in status:
+                print(f"Git Status: {status['git_status']}")
+            sys.exit(0)
+
+        elif args.proj_command == "check":
+            target = Path(args.target).resolve() if args.target else None
+            run_check(target, working_dir)
+            sys.exit(0)
+
         else:
-            print(f"Error: Project '{args.name}' not found.")
-            sys.exit(1)
-
-    elif args.command == "init":
-        # If path looks like a simple name, try resolving it in working_dir
-        # Otherwise, resolve it relative to current working directory
-        target_path = Path(args.path)
-        if not target_path.is_absolute() and len(target_path.parts) == 1:
-            target_path = working_dir / args.path
-        else:
-            target_path = Path.cwd() / args.path
-
-        if not target_path.exists():
-            print(f"Error: Directory '{target_path}' not found.")
-            sys.exit(1)
-
-        project.init_project_structure(target_path)
-        print(f"Initialized engn project in {target_path}")
-        sys.exit(0)
-
-    elif args.command == "list":
-        projects = project.list_projects(working_dir)
-        if not projects:
-            print("No projects found.")
-        else:
-            for p in projects:
-                print(p)
-        sys.exit(0)
-
-    elif args.command == "status":
-        status = project.get_project_status(args.name, working_dir)
-        if not status["exists"]:
-            print(f"Project '{args.name}' not found.")
-            sys.exit(1)
-
-        print(f"Project: {status['name']}")
-        print(f"Path: {status['path']}")
-        print(f"Git: {'Yes' if status['is_git'] else 'No'}")
-        print(f"Beads: {'Yes' if status['is_beads'] else 'No'}")
-        print(f"Engn: {'Yes' if status['is_engn'] else 'No'}")
-        if "git_status" in status:
-            print(f"Git Status: {status['git_status']}")
-        sys.exit(0)
-
-    elif args.command == "check":
-        target = Path(args.target).resolve() if args.target else None
-        run_check(target, working_dir)
-        sys.exit(0)
+            proj_parser.print_help()
+            sys.exit(0)
 
     elif args.command == "user":
         if args.user_command == "add":
