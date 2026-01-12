@@ -1,103 +1,195 @@
 import argparse
 import sys
 from pathlib import Path
-from typing import cast
+from typing import Any, Optional
 
 import flet as ft
 from engn.utils import get_version
-
-
-from engn.pm import ProjectManager
+from engn.config import ProjectConfig
+from engn.core.auth import get_oauth_providers, User as EngnUser
+from engn.ui import (
+    LoginView,
+    Toolbar,
+    HomeDomainPage,
+    UserProfileView,
+    AdminView,
+)
 
 
 class ProjEngnApp:
-    def __init__(self, page: ft.Page, working_directory: str | Path):
+    """Main application controller for ProjEngn."""
+
+    def __init__(
+        self,
+        page: ft.Page,
+        config: ProjectConfig,
+        user: EngnUser,
+        working_directory: Path,
+    ):
         self.page = page
-        self.pm = ProjectManager(working_directory)
-        self.projects = []
-        self.projects_view = ft.Column(spacing=10)
+        self.config = config
+        self.user = user
+        self.working_directory = working_directory
+        self.current_view_index = 0
 
-    def scan_projects(self):
-        """Scan for projects and update the UI."""
-        self.projects = self.pm.get_all_projects()
-        self.projects_view.controls.clear()
-
-        if not self.projects:
-            self.projects_view.controls.append(
-                ft.Text("No projects found in the working directory.", italic=True)
-            )
-        else:
-            for proj in self.projects:
-                self.projects_view.controls.append(
-                    ft.Card(
-                        content=ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.ListTile(
-                                        leading=ft.Icon(ft.Icons.FOLDER),
-                                        title=ft.Text(proj.name),
-                                        subtitle=ft.Text(str(proj.path)),
-                                        trailing=ft.Icon(
-                                            ft.Icons.CHECK_CIRCLE
-                                            if proj.is_initialized
-                                            else ft.Icons.RADIO_BUTTON_UNCHECKED,
-                                            color=ft.Colors.GREEN
-                                            if proj.is_initialized
-                                            else ft.Colors.GREY,
-                                        ),
-                                    ),
-                                ]
-                            ),
-                            padding=10,
-                        )
-                    )
-                )
-        self.page.update()
-
-    def build(self):
-        """Build the main UI layout."""
-        self.page.title = "ProjEngn"
-        self.page.theme_mode = ft.ThemeMode.DARK
-
-        layout = ft.Column(
-            controls=cast(
-                list[ft.Control],
-                [
-                    ft.Text(
-                        "Welcome to ProjEngn - Program Management Tool",
-                        size=30,
-                        weight=ft.FontWeight.BOLD,
-                    ),
-                    ft.Divider(),
-                    ft.Row(
-                        controls=cast(
-                            list[ft.Control],
-                            [
-                                ft.Text(
-                                    "Projects", size=20, weight=ft.FontWeight.W_500
-                                ),
-                                ft.IconButton(
-                                    icon=ft.Icons.REFRESH,
-                                    on_click=lambda _: self.scan_projects(),
-                                ),
-                            ],
-                        ),
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    ),
-                    self.projects_view,
-                ],
-            ),
-            expand=True,
-            scroll=ft.ScrollMode.ADAPTIVE,
+        # Create toolbar with simplified tabs for ProjEngn
+        logo_path = str("engn_logo_core_tiny_transparent.png")
+        self.toolbar = Toolbar(
+            page=page,
+            user=self.user,
+            logo_path=logo_path,
+            on_tab_change=self._on_tab_change,
+            tabs=["Projects"],  # ProjEngn focuses on project management
+            on_logout=self._on_logout,
+            on_profile=self._on_profile,
+            working_directory=self.working_directory,
+            on_admin=self._on_admin,
+            show_branch_dropdown=False,  # Simpler interface for ProjEngn
+            show_search=False,
         )
 
-        self.page.add(layout)
-        self.scan_projects()
+        # Create home page (project view)
+        self.home_page = HomeDomainPage(
+            self.page,
+            self.user,
+            self.working_directory,
+            on_projects_changed=self.toolbar.refresh_projects,
+        )
+
+        # Content area for views
+        self.content_area = ft.Container(
+            content=self.home_page,
+            expand=True,
+        )
+
+        # Main layout
+        self.layout = ft.Column(
+            controls=[
+                self.toolbar,
+                ft.Divider(height=1),
+                self.content_area,
+            ],
+            spacing=0,
+            expand=True,
+        )
+
+    def _on_logout(self) -> None:
+        """Handle logout."""
+        store: Any = getattr(self.page.session, "store", self.page.session)
+        store.remove("user")
+        self.page.clean()
+        # Return to login
+        flet_main(self.page, self.working_directory)
+
+    def _on_profile(self) -> None:
+        """Show user profile page."""
+        profile_view = UserProfileView(
+            page=self.page,
+            user=self.user,
+            on_back=self._return_from_profile,
+            on_save=self._on_profile_saved,
+        )
+        self._previous_view = self.content_area.content
+        self.content_area.content = profile_view
+        self.page.update()
+
+    def _return_from_profile(self) -> None:
+        """Return from profile page to previous view."""
+        if hasattr(self, "_previous_view") and self._previous_view:
+            self.content_area.content = self._previous_view
+        else:
+            self.content_area.content = self.home_page
+        self.page.update()
+
+    def _on_profile_saved(self) -> None:
+        """Handle profile save - refresh the toolbar avatar."""
+        self.toolbar.refresh_avatar()
+
+    def _on_admin(self) -> None:
+        """Show admin panel."""
+        admin_view = AdminView(
+            page=self.page,
+            user=self.user,
+            on_back=self._return_from_admin,
+        )
+        self._previous_view = self.content_area.content
+        self.content_area.content = admin_view
+        self.page.update()
+
+    def _return_from_admin(self) -> None:
+        """Return from admin panel to previous view."""
+        if hasattr(self, "_previous_view") and self._previous_view:
+            self.content_area.content = self._previous_view
+        else:
+            self.content_area.content = self.home_page
+        self.page.update()
+
+    def _on_tab_change(self, index: int) -> None:
+        """Handle tab navigation change."""
+        self.current_view_index = index
+        # For ProjEngn, we only have the Projects tab
+        self.content_area.content = self.home_page
+        self.page.update()
+
+    def build(self) -> ft.Column:
+        """Return the main layout."""
+        return self.layout
 
 
-def flet_main(page: ft.Page, working_directory: str | Path):
-    app = ProjEngnApp(page, working_directory)
-    app.build()
+def flet_main(page: ft.Page, working_directory: Optional[Path] = None):
+    """Initialize and show the ProjEngn application."""
+    page.title = "ProjEngn"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.padding = 0
+
+    working_dir = working_directory or Path.cwd()
+    config = ProjectConfig.load(working_dir)
+
+    def show_main_app():
+        page.clean()
+        store: Any = getattr(page.session, "store", page.session)
+        user = store.get("user")
+        app = ProjEngnApp(page, config, user=user, working_directory=working_dir)
+        page.add(app.build())
+        page.update()
+
+    def on_login(e):
+        if e.error:
+            page.overlay.append(
+                ft.SnackBar(ft.Text(f"Login error: {e.error}"), open=True)
+            )
+        else:
+            # Successful OAuth login
+            auth: Any = getattr(page, "auth", None)
+            user_data = getattr(auth, "user", {}) if auth else {}
+            user = EngnUser(
+                id=user_data.get("id") or user_data.get("sub") or "oauth",
+                email=user_data.get("email") or "unknown",
+                name=user_data.get("name") or "OAuth User",
+            )
+            store: Any = getattr(page.session, "store", page.session)
+            store.set("user", user)
+            show_main_app()
+        page.update()
+
+    page.on_login = on_login
+
+    providers = get_oauth_providers()
+
+    # If already logged in, show main app
+    store: Any = getattr(page.session, "store", page.session)
+    if store.get("user"):
+        show_main_app()
+    else:
+        page.add(
+            LoginView(
+                page,
+                on_login_success=show_main_app,
+                icon="images/sysengn_logo.png",
+                app_name="ProjEngn",
+                oauth_providers=providers,
+            )
+        )
 
 
 def main() -> None:

@@ -28,8 +28,8 @@ class TestMainAppExtended:
     def test_on_logout(self, mock_page, mock_config) -> None:
         """Test _on_logout callback."""
         with (
-            patch("sysengn.pages.home.ProjectManager"),
-            patch("sysengn.pages.home.IssueTracker"),
+            patch("engn.ui.home_page.ProjectManager"),
+            patch("engn.ui.home_page.IssueTracker"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_logout()
@@ -38,8 +38,8 @@ class TestMainAppExtended:
     def test_on_profile(self, mock_page, mock_config) -> None:
         """Test _on_profile callback."""
         with (
-            patch("sysengn.pages.home.ProjectManager"),
-            patch("sysengn.pages.home.IssueTracker"),
+            patch("engn.ui.home_page.ProjectManager"),
+            patch("engn.ui.home_page.IssueTracker"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_profile()
@@ -47,8 +47,8 @@ class TestMainAppExtended:
     def test_on_admin(self, mock_page, mock_config) -> None:
         """Test _on_admin callback."""
         with (
-            patch("sysengn.pages.home.ProjectManager"),
-            patch("sysengn.pages.home.IssueTracker"),
+            patch("engn.ui.home_page.ProjectManager"),
+            patch("engn.ui.home_page.IssueTracker"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_admin()
@@ -56,8 +56,8 @@ class TestMainAppExtended:
     def test_on_toggle_terminal(self, mock_page, mock_config) -> None:
         """Test _on_toggle_terminal callback."""
         with (
-            patch("sysengn.pages.home.ProjectManager"),
-            patch("sysengn.pages.home.IssueTracker"),
+            patch("engn.ui.home_page.ProjectManager"),
+            patch("engn.ui.home_page.IssueTracker"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_toggle_terminal()
@@ -65,8 +65,8 @@ class TestMainAppExtended:
     def test_on_tab_change(self, mock_page, mock_config) -> None:
         """Test _on_tab_change logic."""
         with (
-            patch("sysengn.pages.home.ProjectManager"),
-            patch("sysengn.pages.home.IssueTracker"),
+            patch("engn.ui.home_page.ProjectManager"),
+            patch("engn.ui.home_page.IssueTracker"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_tab_change(1)

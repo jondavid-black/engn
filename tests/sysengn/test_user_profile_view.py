@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import flet as ft
-from sysengn.views import UserProfileView
+from engn.ui import UserProfileView
 from engn.core.auth import User
 
 
@@ -82,7 +82,7 @@ def test_user_profile_view_save(mock_page, test_user):
     view.last_name_field.value = "Name"
     view.selected_color = ft.Colors.GREEN
 
-    with patch("sysengn.views.update_user_profile") as mock_update:
+    with patch("engn.ui.views.update_user_profile") as mock_update:
         view.save_profile(None)
 
         mock_update.assert_called_once_with("test-id", "New", "Name", ft.Colors.GREEN)

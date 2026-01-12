@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from unittest.mock import patch, MagicMock
 from projengn.main import main, flet_main
@@ -23,5 +25,5 @@ def test_projengn_flet_startup():
 
 def test_flet_main():
     mock_page = MagicMock(spec=ft.Page)
-    flet_main(mock_page, working_directory=".")
+    flet_main(mock_page, working_directory=Path("."))
     assert mock_page.title == "ProjEngn"

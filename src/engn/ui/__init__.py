@@ -12,7 +12,9 @@ from engn.ui.document_outline_view import (
     create_markdown_outline,
 )
 from engn.ui.file_tree_view import FileTreeView, create_file_tree, get_file_icon
+from engn.ui.home_page import HomeDomainPage
 from engn.ui.terminal_emulator import TerminalEmulator
+from engn.ui.toolbar import Toolbar
 from engn.ui.tree_view import (
     TreeNode,
     TreeView,
@@ -20,6 +22,7 @@ from engn.ui.tree_view import (
     find_node_and_parent,
     move_node,
 )
+from engn.ui.views import AdminView, LoginView, UserProfileView
 
 __all__ = [
     # Base TreeView
@@ -40,4 +43,12 @@ __all__ = [
     "create_code_outline",
     # TerminalEmulator
     "TerminalEmulator",
+    # Toolbar
+    "Toolbar",
+    # Views
+    "LoginView",
+    "UserProfileView",
+    "AdminView",
+    # Home Page
+    "HomeDomainPage",
 ]

@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, Mock, patch
 import flet as ft
 import pytest
 
-from sysengn.auth import User
-from sysengn.components.toolbar import Toolbar
+from engn.core.auth import User
+from engn.ui import Toolbar
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def mock_user():
 def toolbar(mock_page, mock_user):
     """Create a Toolbar instance with a mock callback."""
     # Mock ProjectManager
-    with patch("sysengn.components.toolbar.ProjectManager") as mock_pm_cls:
+    with patch("engn.ui.toolbar.ProjectManager") as mock_pm_cls:
         mock_pm = mock_pm_cls.return_value
         # Mock get_all_projects to return some dummy projects
         mock_project = Mock()

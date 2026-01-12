@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import flet as ft
-from sysengn.views import LoginView
+from engn.ui import LoginView
 from engn.core.auth import User
 
 
@@ -39,7 +39,7 @@ def test_local_login_success(mock_page):
 
     mock_user = User(id="1", email="test@example.com", name="Test User")
 
-    with patch("sysengn.views.authenticate_local_user", return_value=mock_user):
+    with patch("engn.ui.views.authenticate_local_user", return_value=mock_user):
         view.handle_local_login(None)
 
         # Check if user was set in session/store
@@ -61,7 +61,7 @@ def test_local_login_failure(mock_page):
     view.email_field.value = "test@example.com"
     view.password_field.value = "wrong"
 
-    with patch("sysengn.views.authenticate_local_user", return_value=None):
+    with patch("engn.ui.views.authenticate_local_user", return_value=None):
         view.handle_local_login(None)
 
         on_success.assert_not_called()

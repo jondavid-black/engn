@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import cast
 
 from engn.core.auth import User as EngnUser
-from sysengn.pages.home import HomeDomainPage
+from engn.ui import HomeDomainPage
 
 
 @pytest.fixture
@@ -26,8 +26,8 @@ def mock_user():
 
 @pytest.fixture
 def home_page(mock_page, mock_user):
-    mock_pm_patcher = patch("sysengn.pages.home.ProjectManager")
-    mock_it_patcher = patch("sysengn.pages.home.IssueTracker")
+    mock_pm_patcher = patch("engn.ui.home_page.ProjectManager")
+    mock_it_patcher = patch("engn.ui.home_page.IssueTracker")
 
     mock_pm_cls = mock_pm_patcher.start()
     mock_it_cls = mock_it_patcher.start()
@@ -112,7 +112,7 @@ def test_on_rail_change(home_page):
 
 
 def test_set_default_project(home_page, mock_user):
-    with patch("sysengn.pages.home.update_user_default_project") as mock_update:
+    with patch("engn.ui.home_page.update_user_default_project") as mock_update:
         home_page._set_default_project("proj2")
         mock_update.assert_called_with("user1", "proj2")
         assert home_page.user.default_project == "proj2"
@@ -123,7 +123,7 @@ def test_set_default_project_no_page(home_page):
     # Temporarily remove page_ref
     original_page = home_page.page_ref
     home_page.page_ref = None  # type: ignore
-    with patch("sysengn.pages.home.update_user_default_project"):
+    with patch("engn.ui.home_page.update_user_default_project"):
         home_page._set_default_project("proj1")
     home_page.page_ref = original_page
 
@@ -195,8 +195,8 @@ def test_clone_project_flow(home_page, mock_page):
 
 
 def test_on_rail_change_no_project(mock_page, mock_user):
-    mock_pm_patcher = patch("sysengn.pages.home.ProjectManager")
-    mock_it_patcher = patch("sysengn.pages.home.IssueTracker")
+    mock_pm_patcher = patch("engn.ui.home_page.ProjectManager")
+    mock_it_patcher = patch("engn.ui.home_page.IssueTracker")
     mock_pm_cls = mock_pm_patcher.start()
     mock_it_patcher.start()
     try:
@@ -224,7 +224,7 @@ def test_on_rail_change_no_project(mock_page, mock_user):
 
 def test_build_plan_view_error(home_page):
     with patch.object(home_page, "active_project_name", "some-proj"):
-        with patch("sysengn.pages.home.IssueTracker") as mock_it_cls:
+        with patch("engn.ui.home_page.IssueTracker") as mock_it_cls:
             mock_it = mock_it_cls.return_value
             mock_it.list_issues.side_effect = Exception("Tracker error")
 

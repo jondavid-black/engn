@@ -9,10 +9,8 @@ from engn.utils import get_version
 from engn.config import ProjectConfig
 from engn.core.auth import get_oauth_providers, User as EngnUser
 from sysengn.auth import Authenticator, User as SysEngnUser
-from sysengn.views import LoginView, AdminView, UserProfileView
-from sysengn.pages.home import HomeDomainPage
+from engn.ui import LoginView, AdminView, UserProfileView, HomeDomainPage, Toolbar
 from sysengn.components import (
-    Toolbar,
     MBSEView,
     UXView,
     DocsView,
@@ -111,9 +109,7 @@ class MainApp:
 
     def _on_profile_saved(self) -> None:
         """Handle profile save - refresh the toolbar avatar."""
-        self.toolbar.avatar_control = self.toolbar._build_avatar()
-        self.toolbar._build_content()
-        self.toolbar.update()
+        self.toolbar.refresh_avatar()
 
     def _on_admin(self) -> None:
         """Show admin panel."""

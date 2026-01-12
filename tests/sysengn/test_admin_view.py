@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import flet as ft
-from sysengn.views import AdminView
+from engn.ui import AdminView
 from engn.core.auth import User, Role
 
 
@@ -29,13 +29,13 @@ def admin_user():
 def temp_config(tmp_path, monkeypatch):
     config_file = tmp_path / "engn.toml"
     monkeypatch.setattr("engn.core.auth.CONFIG_PATH", config_file)
-    monkeypatch.setattr("sysengn.views.list_users", lambda: [])
+    monkeypatch.setattr("engn.ui.views.list_users", lambda: [])
     return config_file
 
 
 def test_admin_view_init(mock_page, admin_user):
     on_back = MagicMock()
-    with patch("sysengn.views.list_users", return_value=[admin_user]):
+    with patch("engn.ui.views.list_users", return_value=[admin_user]):
         view = AdminView(page=mock_page, user=admin_user, on_back=on_back)
 
     assert view.user == admin_user
@@ -56,7 +56,7 @@ def test_admin_view_builds_users_table(mock_page, admin_user):
         ),
     ]
 
-    with patch("sysengn.views.list_users", return_value=test_users):
+    with patch("engn.ui.views.list_users", return_value=test_users):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     # Check that table has rows for users
@@ -64,7 +64,7 @@ def test_admin_view_builds_users_table(mock_page, admin_user):
 
 
 def test_admin_view_add_user_validation_empty_email(mock_page, admin_user):
-    with patch("sysengn.views.list_users", return_value=[]):
+    with patch("engn.ui.views.list_users", return_value=[]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view.new_email_field.value = ""
@@ -79,7 +79,7 @@ def test_admin_view_add_user_validation_empty_email(mock_page, admin_user):
 
 
 def test_admin_view_add_user_validation_empty_password(mock_page, admin_user):
-    with patch("sysengn.views.list_users", return_value=[]):
+    with patch("engn.ui.views.list_users", return_value=[]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view.new_email_field.value = "new@example.com"
@@ -93,7 +93,7 @@ def test_admin_view_add_user_validation_empty_password(mock_page, admin_user):
 
 
 def test_admin_view_add_user_validation_password_mismatch(mock_page, admin_user):
-    with patch("sysengn.views.list_users", return_value=[]):
+    with patch("engn.ui.views.list_users", return_value=[]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view.new_email_field.value = "new@example.com"
@@ -107,7 +107,7 @@ def test_admin_view_add_user_validation_password_mismatch(mock_page, admin_user)
 
 
 def test_admin_view_add_user_validation_short_password(mock_page, admin_user):
-    with patch("sysengn.views.list_users", return_value=[]):
+    with patch("engn.ui.views.list_users", return_value=[]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view.new_email_field.value = "new@example.com"
@@ -125,7 +125,7 @@ def test_admin_view_add_user_success(mock_page, admin_user):
         id="new-id", email="new@example.com", name="New User", roles=[Role.USER]
     )
 
-    with patch("sysengn.views.list_users", return_value=[admin_user]):
+    with patch("engn.ui.views.list_users", return_value=[admin_user]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view.new_email_field.value = "new@example.com"
@@ -135,8 +135,8 @@ def test_admin_view_add_user_success(mock_page, admin_user):
     view.new_role_dropdown.value = Role.USER.value
     view.update = MagicMock()
 
-    with patch("sysengn.views.create_user", return_value=new_user) as mock_create:
-        with patch("sysengn.views.list_users", return_value=[admin_user, new_user]):
+    with patch("engn.ui.views.create_user", return_value=new_user) as mock_create:
+        with patch("engn.ui.views.list_users", return_value=[admin_user, new_user]):
             view._add_user(None)
 
     mock_create.assert_called_once()
@@ -146,7 +146,7 @@ def test_admin_view_add_user_success(mock_page, admin_user):
 
 
 def test_admin_view_add_user_duplicate_error(mock_page, admin_user):
-    with patch("sysengn.views.list_users", return_value=[admin_user]):
+    with patch("engn.ui.views.list_users", return_value=[admin_user]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view.new_email_field.value = "admin@example.com"
@@ -155,7 +155,7 @@ def test_admin_view_add_user_duplicate_error(mock_page, admin_user):
     view.new_password_confirm_field.value = "password123"
 
     with patch(
-        "sysengn.views.create_user", side_effect=ValueError("User already exists")
+        "engn.ui.views.create_user", side_effect=ValueError("User already exists")
     ):
         view._add_user(None)
 
@@ -166,13 +166,13 @@ def test_admin_view_add_user_duplicate_error(mock_page, admin_user):
 def test_admin_view_toggle_role_add(mock_page, admin_user):
     test_user = User(id="user-id", email="user@example.com", roles=[Role.USER])
 
-    with patch("sysengn.views.list_users", return_value=[admin_user, test_user]):
+    with patch("engn.ui.views.list_users", return_value=[admin_user, test_user]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view.update = MagicMock()
 
-    with patch("sysengn.views.add_role_to_user", return_value=True) as mock_add:
-        with patch("sysengn.views.list_users", return_value=[admin_user, test_user]):
+    with patch("engn.ui.views.add_role_to_user", return_value=True) as mock_add:
+        with patch("engn.ui.views.list_users", return_value=[admin_user, test_user]):
             view._toggle_role("user@example.com", Role.ADMIN, False)
 
     mock_add.assert_called_once_with("user@example.com", Role.ADMIN)
@@ -183,13 +183,13 @@ def test_admin_view_toggle_role_remove(mock_page, admin_user):
         id="user-id", email="user@example.com", roles=[Role.ADMIN, Role.USER]
     )
 
-    with patch("sysengn.views.list_users", return_value=[admin_user, test_user]):
+    with patch("engn.ui.views.list_users", return_value=[admin_user, test_user]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view.update = MagicMock()
 
-    with patch("sysengn.views.remove_role_from_user", return_value=True) as mock_remove:
-        with patch("sysengn.views.list_users", return_value=[admin_user, test_user]):
+    with patch("engn.ui.views.remove_role_from_user", return_value=True) as mock_remove:
+        with patch("engn.ui.views.list_users", return_value=[admin_user, test_user]):
             view._toggle_role("user@example.com", Role.ADMIN, True)
 
     mock_remove.assert_called_once_with("user@example.com", Role.ADMIN)
@@ -198,23 +198,23 @@ def test_admin_view_toggle_role_remove(mock_page, admin_user):
 def test_admin_view_remove_user(mock_page, admin_user):
     test_user = User(id="user-id", email="user@example.com", roles=[Role.USER])
 
-    with patch("sysengn.views.list_users", return_value=[admin_user, test_user]):
+    with patch("engn.ui.views.list_users", return_value=[admin_user, test_user]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view.update = MagicMock()
 
-    with patch("sysengn.views.remove_user", return_value=True) as mock_remove:
-        with patch("sysengn.views.list_users", return_value=[admin_user]):
+    with patch("engn.ui.views.remove_user", return_value=True) as mock_remove:
+        with patch("engn.ui.views.list_users", return_value=[admin_user]):
             view._remove_user("user@example.com")
 
     mock_remove.assert_called_once_with("user@example.com")
 
 
 def test_admin_view_remove_user_failure(mock_page, admin_user):
-    with patch("sysengn.views.list_users", return_value=[admin_user]):
+    with patch("engn.ui.views.list_users", return_value=[admin_user]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
-    with patch("sysengn.views.remove_user", return_value=False):
+    with patch("engn.ui.views.remove_user", return_value=False):
         view._remove_user("nonexistent@example.com")
 
     # Should show error
@@ -222,7 +222,7 @@ def test_admin_view_remove_user_failure(mock_page, admin_user):
 
 
 def test_admin_view_show_error(mock_page, admin_user):
-    with patch("sysengn.views.list_users", return_value=[]):
+    with patch("engn.ui.views.list_users", return_value=[]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view._show_error("Test error message")
@@ -233,7 +233,7 @@ def test_admin_view_show_error(mock_page, admin_user):
 
 
 def test_admin_view_show_success(mock_page, admin_user):
-    with patch("sysengn.views.list_users", return_value=[]):
+    with patch("engn.ui.views.list_users", return_value=[]):
         view = AdminView(page=mock_page, user=admin_user, on_back=MagicMock())
 
     view._show_success("Test success message")
@@ -246,7 +246,7 @@ def test_admin_view_show_success(mock_page, admin_user):
 def test_admin_view_back_button(mock_page, admin_user):
     on_back = MagicMock()
 
-    with patch("sysengn.views.list_users", return_value=[]):
+    with patch("engn.ui.views.list_users", return_value=[]):
         view = AdminView(page=mock_page, user=admin_user, on_back=on_back)
 
     # The back button is in the controls
