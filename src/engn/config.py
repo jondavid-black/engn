@@ -1,14 +1,7 @@
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-# Try to import tomllib (Python 3.11+), otherwise fallback
-try:
-    import tomllib  # type: ignore
-except ImportError:
-    # For older python versions, you might need 'tomli' installed
-    # But this project requires 3.12, so tomllib should be available.
-    import tomllib  # type: ignore
 
 
 @dataclass
@@ -27,14 +20,34 @@ class ProjectConfig:
     @classmethod
     def load(cls, project_root: Path) -> "ProjectConfig":
         """
-        Load configuration from engn.toml in the project root.
+        Load configuration from engn.jsonl or engn.toml in the project root.
         If file doesn't exist, return defaults.
         """
+        # Try engn.jsonl first
+        jsonl_path = project_root / "engn.jsonl"
+        if jsonl_path.exists():
+            try:
+                with open(jsonl_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        data = json.loads(line)
+                        if data.get("engn_type") == "ProjectConfig":
+                            return cls(
+                                pm_path=data.get("pm_path", "pm"),
+                                sysengn_path=data.get("sysengn_path", "arch"),
+                                ux_path=data.get("ux_path", "ux"),
+                                auth=AuthConfig(),  # Auth moved to workspace level
+                            )
+            except Exception:
+                pass
+
+        # Fallback to engn.toml
         config_path = project_root / "engn.toml"
         if not config_path.exists():
             return cls(auth=AuthConfig())
 
         try:
+            import tomllib
+
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
 
@@ -55,5 +68,4 @@ class ProjectConfig:
                 auth=auth_config,
             )
         except Exception:
-            # Log warning? For now just return defaults on error
             return cls(auth=AuthConfig())

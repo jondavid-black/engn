@@ -4,6 +4,12 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from engn.core.workspace import (
+    get_workspace_root,
+    ensure_project_ignored,
+    remove_project_from_gitignore,
+)
+
 
 def init_project_structure(target_path: Path) -> None:
     """
@@ -17,14 +23,37 @@ def init_project_structure(target_path: Path) -> None:
     for dir_name in ["arch", "pm", "ux"]:
         (target_path / dir_name).mkdir(exist_ok=True)
 
-    # Create engn.toml if it doesn't exist
-    config_path = target_path / "engn.toml"
+    # Create engn.jsonl if it doesn't exist
+    config_path = target_path / "engn.jsonl"
     if not config_path.exists():
+        import json
+
         with open(config_path, "w", encoding="utf-8") as f:
-            f.write("[paths]\n")
-            f.write('pm = "pm"\n')
-            f.write('sysengn = "arch"\n')
-            f.write('ux = "ux"\n')
+            f.write(
+                json.dumps(
+                    {
+                        "engn_type": "type_def",
+                        "name": "ProjectConfig",
+                        "properties": [
+                            {"name": "pm_path", "type": "str", "default": "pm"},
+                            {"name": "sysengn_path", "type": "str", "default": "arch"},
+                            {"name": "ux_path", "type": "str", "default": "ux"},
+                        ],
+                    }
+                )
+                + "\n"
+            )
+            f.write(
+                json.dumps(
+                    {
+                        "engn_type": "ProjectConfig",
+                        "pm_path": "pm",
+                        "sysengn_path": "arch",
+                        "ux_path": "ux",
+                    }
+                )
+                + "\n"
+            )
 
     # Initialize beads (bd) if installed and not already present
     if shutil.which("bd"):
@@ -57,6 +86,10 @@ def create_new_project(name: str, working_dir: Path) -> Path:
 
     # Initialize engn and beads
     init_project_structure(project_path)
+
+    # Ensure project is ignored in workspace
+    workspace_root = get_workspace_root(working_dir)
+    ensure_project_ignored(workspace_root, project_path)
 
     # Establish initial commit
     subprocess.run(
@@ -93,6 +126,10 @@ def clone_project(url: str, working_dir: Path, name: Optional[str] = None) -> Pa
     # Initialize engn and beads if missing
     init_project_structure(project_path)
 
+    # Ensure project is ignored in workspace
+    workspace_root = get_workspace_root(working_dir)
+    ensure_project_ignored(workspace_root, project_path)
+
     return project_path
 
 
@@ -101,6 +138,10 @@ def delete_project(name: str, working_dir: Path) -> bool:
     project_path = working_dir / name
     if not project_path.exists() or not project_path.is_dir():
         return False
+
+    # Remove from workspace .gitignore
+    workspace_root = get_workspace_root(working_dir)
+    remove_project_from_gitignore(workspace_root, name)
 
     # Delete with retries to handle locked files (e.g., beads daemon)
     for _ in range(3):
@@ -117,12 +158,17 @@ def list_projects(working_dir: Path) -> List[str]:
     if not working_dir.exists() or not working_dir.is_dir():
         return []
 
+    workspace_root = get_workspace_root(working_dir)
     projects = []
     for item in working_dir.iterdir():
         if item.is_dir() and (
-            (item / "engn.toml").exists() or (item / ".git").exists()
+            (item / "engn.jsonl").exists()
+            or (item / "engn.toml").exists()
+            or (item / ".git").exists()
         ):
             projects.append(item.name)
+            # Ensure discovered projects are ignored
+            ensure_project_ignored(workspace_root, item)
 
     return sorted(projects)
 
@@ -139,7 +185,8 @@ def get_project_status(name: str, working_dir: Path) -> Dict[str, Any]:
         "path": str(project_path),
         "is_git": (project_path / ".git").exists(),
         "is_beads": (project_path / ".beads").exists(),
-        "is_engn": (project_path / "engn.toml").exists(),
+        "is_engn": (project_path / "engn.jsonl").exists()
+        or (project_path / "engn.toml").exists(),
     }
 
     if status["is_git"]:

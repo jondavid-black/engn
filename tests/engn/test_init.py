@@ -24,16 +24,15 @@ def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
     assert (tmp_path / "pm").is_dir()
     assert (tmp_path / "ux").is_dir()
 
-    # Check if engn.toml was created
-    config_file = tmp_path / "engn.toml"
+    # Check if engn.jsonl was created
+    config_file = tmp_path / "engn.jsonl"
     assert config_file.is_file()
 
-    # Check content of engn.toml
+    # Check content of engn.jsonl
     content = config_file.read_text()
-    assert "[paths]" in content
-    assert 'sysengn = "arch"' in content
-    assert 'pm = "pm"' in content
-    assert 'ux = "ux"' in content
+    assert '"engn_type": "type_def"' in content
+    assert '"name": "ProjectConfig"' in content
+    assert '"sysengn_path": "arch"' in content
 
     # Check output
     captured = capsys.readouterr()

@@ -22,16 +22,16 @@ def test_create_new_project(temp_working_dir):
 
     assert project_path.exists()
     assert (project_path / ".git").exists()
-    assert (project_path / "engn.toml").exists()
+    assert (project_path / "engn.jsonl").exists()
     assert (project_path / "arch").exists()
     assert (project_path / "pm").exists()
     assert (project_path / "ux").exists()
 
-    # Check engn.toml content
-    with open(project_path / "engn.toml", "r") as f:
+    # Check engn.jsonl content
+    with open(project_path / "engn.jsonl", "r") as f:
         content = f.read()
-        assert "[paths]" in content
-        assert 'pm = "pm"' in content
+        assert '"engn_type": "type_def"' in content
+        assert '"name": "ProjectConfig"' in content
 
     # Check default branch is main
     result = subprocess.run(
@@ -78,5 +78,5 @@ def test_init_project_structure(temp_working_dir):
     path.mkdir()
     init_project_structure(path)
 
-    assert (path / "engn.toml").exists()
+    assert (path / "engn.jsonl").exists()
     assert (path / "arch").exists()
