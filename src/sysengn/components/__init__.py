@@ -4,11 +4,10 @@ from sysengn.components.domain_views import (
     HomeView,
     MBSEView,
     UXView,
-    DocsView,
 )
 
-# Re-export Toolbar from engn.ui for backward compatibility
-from engn.ui import Toolbar
+# Re-export from engn.ui for backward compatibility
+from engn.ui import Toolbar, DocsView
 
 __all__ = [
     "Toolbar",

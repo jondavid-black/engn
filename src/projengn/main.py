@@ -13,6 +13,10 @@ from engn.ui import (
     HomeDomainPage,
     UserProfileView,
     AdminView,
+    BaselineView,
+    ActualView,
+    AnalyzeView,
+    DocsView,
 )
 
 
@@ -32,28 +36,41 @@ class ProjEngnApp:
         self.working_directory = working_directory
         self.current_view_index = 0
 
-        # Create toolbar with simplified tabs for ProjEngn
+        # Create domain views
+        self.home_page = HomeDomainPage(
+            self.page,
+            self.user,
+            self.working_directory,
+            on_projects_changed=self._on_projects_changed,
+        )
+        self.baseline_view = BaselineView()
+        self.actual_view = ActualView()
+        self.analyze_view = AnalyzeView()
+        self.docs_view = DocsView(app_name="ProjEngn")
+
+        # Views list matching tab order
+        self.views = [
+            self.home_page,
+            self.baseline_view,
+            self.actual_view,
+            self.analyze_view,
+            self.docs_view,
+        ]
+
+        # Create toolbar with program management tabs
         logo_path = str("engn_logo_core_tiny_transparent.png")
         self.toolbar = Toolbar(
             page=page,
             user=self.user,
             logo_path=logo_path,
             on_tab_change=self._on_tab_change,
-            tabs=["Projects"],  # ProjEngn focuses on project management
+            tabs=["Projects", "Baseline", "Actual", "Analyze", "Docs"],
             on_logout=self._on_logout,
             on_profile=self._on_profile,
             working_directory=self.working_directory,
             on_admin=self._on_admin,
             show_branch_dropdown=False,  # Simpler interface for ProjEngn
-            show_search=False,
-        )
-
-        # Create home page (project view)
-        self.home_page = HomeDomainPage(
-            self.page,
-            self.user,
-            self.working_directory,
-            on_projects_changed=self.toolbar.refresh_projects,
+            show_search=True,
         )
 
         # Content area for views
@@ -72,6 +89,10 @@ class ProjEngnApp:
             spacing=0,
             expand=True,
         )
+
+    def _on_projects_changed(self) -> None:
+        """Handle projects list change."""
+        self.toolbar.refresh_projects()
 
     def _on_logout(self) -> None:
         """Handle logout."""
@@ -98,7 +119,7 @@ class ProjEngnApp:
         if hasattr(self, "_previous_view") and self._previous_view:
             self.content_area.content = self._previous_view
         else:
-            self.content_area.content = self.home_page
+            self.content_area.content = self.views[0]
         self.page.update()
 
     def _on_profile_saved(self) -> None:
@@ -121,14 +142,16 @@ class ProjEngnApp:
         if hasattr(self, "_previous_view") and self._previous_view:
             self.content_area.content = self._previous_view
         else:
-            self.content_area.content = self.home_page
+            self.content_area.content = self.views[0]
         self.page.update()
 
     def _on_tab_change(self, index: int) -> None:
         """Handle tab navigation change."""
         self.current_view_index = index
-        # For ProjEngn, we only have the Projects tab
-        self.content_area.content = self.home_page
+        if 0 <= index < len(self.views):
+            self.content_area.content = self.views[index]
+        else:
+            self.content_area.content = self.views[0]
         self.page.update()
 
     def build(self) -> ft.Column:

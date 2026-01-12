@@ -2,7 +2,8 @@
 
 from typing import Any
 import flet as ft
-from sysengn.components.domain_views import HomeView, MBSEView, UXView, DocsView
+from sysengn.components.domain_views import HomeView, MBSEView, UXView
+from engn.ui import DocsView
 
 
 def test_home_view_init():

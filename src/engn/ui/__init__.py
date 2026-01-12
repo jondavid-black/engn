@@ -11,6 +11,12 @@ from engn.ui.document_outline_view import (
     create_code_outline,
     create_markdown_outline,
 )
+from engn.ui.domain_views import (
+    ActualView,
+    AnalyzeView,
+    BaselineView,
+    DocsView,
+)
 from engn.ui.file_tree_view import FileTreeView, create_file_tree, get_file_icon
 from engn.ui.home_page import HomeDomainPage
 from engn.ui.terminal_emulator import TerminalEmulator
@@ -51,4 +57,9 @@ __all__ = [
     "AdminView",
     # Home Page
     "HomeDomainPage",
+    # Domain Views
+    "DocsView",
+    "BaselineView",
+    "ActualView",
+    "AnalyzeView",
 ]
