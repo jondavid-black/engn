@@ -14,14 +14,17 @@ from engn.core.auth import (
     get_all_roles,
     add_role,
     remove_role,
+    set_config_path,
 )
 
 
 @pytest.fixture
-def temp_config(tmp_path, monkeypatch):
-    config_file = tmp_path / "engn.toml"
-    monkeypatch.setattr("engn.core.auth.CONFIG_PATH", config_file)
-    return config_file
+def temp_config(tmp_path):
+    config_file = tmp_path / "engn.jsonl"
+    set_config_path(config_file)
+    yield config_file
+    # Reset to default if possible, or just let it be since other tests don't use it
+    # We don't have an easy way to reset to "default" without knowing it
 
 
 def test_create_user(temp_config):
