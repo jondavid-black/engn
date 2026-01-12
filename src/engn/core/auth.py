@@ -23,9 +23,29 @@ from argon2.exceptions import VerifyMismatchError
 
 from engn.data.storage import JSONLStorage
 
+from engn.core.workspace import get_workspace_root
+
 logger = logging.getLogger(__name__)
 
-CONFIG_PATH = Path("engn.jsonl")
+# This will be initialized when needed
+_config_path_cache: Optional[Path] = None
+
+
+def get_config_path() -> Path:
+    """Gets the path to engn.jsonl, resolving it relative to the workspace root."""
+    global _config_path_cache
+    if _config_path_cache is None:
+        root = get_workspace_root()
+        _config_path_cache = root / "engn.jsonl"
+    return _config_path_cache
+
+
+def set_config_path(path: Path) -> None:
+    """Explicitly sets the configuration path."""
+    global _config_path_cache
+    _config_path_cache = path
+
+
 ph = PasswordHasher()
 
 
@@ -94,7 +114,7 @@ def get_oauth_providers() -> list[OAuthProvider]:
 
 def _get_storage() -> JSONLStorage[Any]:
     """Get a JSONLStorage instance for the config file."""
-    return JSONLStorage(CONFIG_PATH, [])
+    return JSONLStorage(get_config_path(), [])
 
 
 def _calculate_roles_hash(roles: list[str]) -> str:
@@ -114,8 +134,9 @@ def _get_users_data() -> list[dict[str, Any]]:
     import json
 
     users = []
-    if CONFIG_PATH.exists():
-        with CONFIG_PATH.open("r", encoding="utf-8") as f:
+    config_path = get_config_path()
+    if config_path.exists():
+        with config_path.open("r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -209,7 +230,8 @@ def create_user(
     # Append by writing to file in append mode
     import json
 
-    with CONFIG_PATH.open("a", encoding="utf-8") as f:
+    config_path = get_config_path()
+    with config_path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(user_dict) + "\n")
 
     return User(
@@ -244,9 +266,10 @@ def update_user_profile(
     """Updates the user's profile information in the config file."""
     import json
 
+    config_path = get_config_path()
     lines = []
-    if CONFIG_PATH.exists():
-        with CONFIG_PATH.open("r", encoding="utf-8") as f:
+    if config_path.exists():
+        with config_path.open("r", encoding="utf-8") as f:
             lines = f.readlines()
 
     updated = False
@@ -267,7 +290,7 @@ def update_user_profile(
             new_lines.append(line + "\n")
 
     if updated:
-        with CONFIG_PATH.open("w", encoding="utf-8") as f:
+        with config_path.open("w", encoding="utf-8") as f:
             f.writelines(new_lines)
 
 
@@ -275,9 +298,10 @@ def _update_user_field(user_id: str, field_name: str, value: Any) -> None:
     """Generic helper to update a single field for a user."""
     import json
 
+    config_path = get_config_path()
     lines = []
-    if CONFIG_PATH.exists():
-        with CONFIG_PATH.open("r", encoding="utf-8") as f:
+    if config_path.exists():
+        with config_path.open("r", encoding="utf-8") as f:
             lines = f.readlines()
 
     updated = False
@@ -296,7 +320,7 @@ def _update_user_field(user_id: str, field_name: str, value: Any) -> None:
             new_lines.append(line + "\n")
 
     if updated:
-        with CONFIG_PATH.open("w", encoding="utf-8") as f:
+        with config_path.open("w", encoding="utf-8") as f:
             f.writelines(new_lines)
 
 
@@ -304,9 +328,10 @@ def remove_user(email: str) -> bool:
     """Removes a user from the config file by email. Returns True if removed."""
     import json
 
+    config_path = get_config_path()
     lines = []
-    if CONFIG_PATH.exists():
-        with CONFIG_PATH.open("r", encoding="utf-8") as f:
+    if config_path.exists():
+        with config_path.open("r", encoding="utf-8") as f:
             lines = f.readlines()
 
     removed = False
@@ -325,7 +350,7 @@ def remove_user(email: str) -> bool:
             new_lines.append(line + "\n")
 
     if removed:
-        with CONFIG_PATH.open("w", encoding="utf-8") as f:
+        with config_path.open("w", encoding="utf-8") as f:
             f.writelines(new_lines)
 
     return removed
@@ -379,9 +404,10 @@ def add_role_to_user(email: str, role: Role) -> bool:
     """Adds a role to a user. Returns True if successful."""
     import json
 
+    config_path = get_config_path()
     lines = []
-    if CONFIG_PATH.exists():
-        with CONFIG_PATH.open("r", encoding="utf-8") as f:
+    if config_path.exists():
+        with config_path.open("r", encoding="utf-8") as f:
             lines = f.readlines()
 
     updated = False
@@ -404,7 +430,7 @@ def add_role_to_user(email: str, role: Role) -> bool:
             new_lines.append(line + "\n")
 
     if updated:
-        with CONFIG_PATH.open("w", encoding="utf-8") as f:
+        with config_path.open("w", encoding="utf-8") as f:
             f.writelines(new_lines)
 
     return updated
@@ -414,9 +440,10 @@ def remove_role_from_user(email: str, role: Role) -> bool:
     """Removes a role from a user. Returns True if successful."""
     import json
 
+    config_path = get_config_path()
     lines = []
-    if CONFIG_PATH.exists():
-        with CONFIG_PATH.open("r", encoding="utf-8") as f:
+    if config_path.exists():
+        with config_path.open("r", encoding="utf-8") as f:
             lines = f.readlines()
 
     updated = False
@@ -439,7 +466,7 @@ def remove_role_from_user(email: str, role: Role) -> bool:
             new_lines.append(line + "\n")
 
     if updated:
-        with CONFIG_PATH.open("w", encoding="utf-8") as f:
+        with config_path.open("w", encoding="utf-8") as f:
             f.writelines(new_lines)
 
     return updated

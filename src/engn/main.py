@@ -257,6 +257,11 @@ def main() -> None:
     # Common argument handling
     working_dir = Path(args.working_directory).resolve()
 
+    # Initialize auth config path
+    from engn.core.auth import set_config_path
+
+    set_config_path(working_dir / "engn.jsonl")
+
     if args.command == "proj":
         if args.proj_command == "new":
             try:

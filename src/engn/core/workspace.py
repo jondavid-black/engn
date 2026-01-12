@@ -28,9 +28,13 @@ def get_workspace_root(start_path: Path | None = None) -> Path:
 
     current = start_path.resolve()
 
+    # If the provided path itself is a workspace, return it
+    if is_workspace(current):
+        return current
+
     # Search up the directory tree for engn.jsonl
     while current != current.parent:
-        if (current / "engn.jsonl").exists():
+        if is_workspace(current):
             return current
         current = current.parent
 

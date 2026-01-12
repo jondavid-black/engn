@@ -151,6 +151,12 @@ def flet_main(page: ft.Page, working_directory: Optional[Path] = None):
     page.padding = 0
 
     working_dir = working_directory or Path.cwd()
+
+    # Initialize auth config path
+    from engn.core.auth import set_config_path
+
+    set_config_path(working_dir / "engn.jsonl")
+
     config = ProjectConfig.load(working_dir)
 
     def show_main_app():
