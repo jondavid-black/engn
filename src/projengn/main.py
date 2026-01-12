@@ -69,7 +69,7 @@ class ProjEngnApp:
             on_profile=self._on_profile,
             working_directory=self.working_directory,
             on_admin=self._on_admin,
-            show_branch_dropdown=False,  # Simpler interface for ProjEngn
+            show_branch_dropdown=True,
             show_search=True,
         )
 
