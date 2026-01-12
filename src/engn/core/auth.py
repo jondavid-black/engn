@@ -227,3 +227,113 @@ def update_user_profile(
             user_data["preferred_color"] = preferred_color
             _write_config(config)
             return
+
+
+def remove_user(email: str) -> bool:
+    """Removes a user from the config file by email. Returns True if removed."""
+    config = _read_config()
+    users = config.get("users", [])
+    original_count = len(users)
+    config["users"] = [u for u in users if u.get("email") != email]
+
+    if len(config["users"]) < original_count:
+        _write_config(config)
+        return True
+    return False
+
+
+def list_users() -> list[User]:
+    """Returns a list of all users."""
+    config = _read_config()
+    users = []
+    for user_data in config.get("users", []):
+        roles = [Role(r) for r in user_data.get("roles", [])]
+        users.append(
+            User(
+                id=user_data["id"],
+                email=user_data["email"],
+                name=user_data.get("name"),
+                first_name=user_data.get("first_name"),
+                last_name=user_data.get("last_name"),
+                preferred_color=user_data.get("preferred_color"),
+                default_project=user_data.get("default_project"),
+                roles=roles,
+                theme_preference=user_data.get("theme_preference", "DARK"),
+            )
+        )
+    return users
+
+
+def get_user_by_email(email: str) -> Optional[User]:
+    """Gets a user by email address."""
+    config = _read_config()
+    for user_data in config.get("users", []):
+        if user_data.get("email") == email:
+            roles = [Role(r) for r in user_data.get("roles", [])]
+            return User(
+                id=user_data["id"],
+                email=user_data["email"],
+                name=user_data.get("name"),
+                first_name=user_data.get("first_name"),
+                last_name=user_data.get("last_name"),
+                preferred_color=user_data.get("preferred_color"),
+                default_project=user_data.get("default_project"),
+                roles=roles,
+                theme_preference=user_data.get("theme_preference", "DARK"),
+            )
+    return None
+
+
+def add_role_to_user(email: str, role: Role) -> bool:
+    """Adds a role to a user. Returns True if successful."""
+    config = _read_config()
+    for user_data in config.get("users", []):
+        if user_data.get("email") == email:
+            current_roles = user_data.get("roles", [])
+            if role.value not in current_roles:
+                current_roles.append(role.value)
+                user_data["roles"] = current_roles
+                _write_config(config)
+            return True
+    return False
+
+
+def remove_role_from_user(email: str, role: Role) -> bool:
+    """Removes a role from a user. Returns True if successful."""
+    config = _read_config()
+    for user_data in config.get("users", []):
+        if user_data.get("email") == email:
+            current_roles = user_data.get("roles", [])
+            if role.value in current_roles:
+                current_roles.remove(role.value)
+                user_data["roles"] = current_roles
+                _write_config(config)
+            return True
+    return False
+
+
+def get_all_roles() -> list[Role]:
+    """Returns a list of all available roles."""
+    return list(Role)
+
+
+def add_role(role_name: str) -> None:
+    """
+    Note: Roles are defined as an Enum and cannot be dynamically added at runtime.
+    This function is a placeholder that raises an error explaining this.
+    """
+    raise ValueError(
+        f"Cannot add role '{role_name}'. Roles are defined in the Role enum "
+        "and require code changes to add new roles."
+    )
+
+
+def remove_role(role_name: str) -> None:
+    """
+    Note: Roles are defined as an Enum and cannot be dynamically removed at runtime.
+    This function is a placeholder that raises an error explaining this.
+    """
+    raise ValueError(
+        f"Cannot remove role '{role_name}'. Roles are defined in the Role enum "
+        "and require code changes to remove roles."
+    )

@@ -1,4 +1,5 @@
 import argparse
+import getpass
 import sys
 from pathlib import Path
 from typing import List
@@ -9,6 +10,32 @@ from engn.utils import get_version
 from engn.config import ProjectConfig
 from engn.data.storage import EngnDataModel
 from engn import project
+from engn.core.auth import (
+    Role,
+    create_user,
+    remove_user,
+    list_users,
+    get_user_by_email,
+    add_role_to_user,
+    remove_role_from_user,
+    get_all_roles,
+)
+
+
+def prompt_for_password() -> str:
+    """Prompt for password with confirmation, hiding input."""
+    while True:
+        password = getpass.getpass("Password: ")
+        if not password:
+            print("Error: Password cannot be empty.")
+            continue
+
+        confirm = getpass.getpass("Confirm password: ")
+        if password != confirm:
+            print("Error: Passwords do not match. Please try again.")
+            continue
+
+        return password
 
 
 def run_check(target: Path | None, working_dir: Path) -> None:
@@ -148,6 +175,60 @@ def main() -> None:
         help="Path to JSONL file or directory to check (default: check all configured paths)",
     )
 
+    # user command with subcommands
+    user_parser = subparsers.add_parser("user", help="Manage users")
+    user_subparsers = user_parser.add_subparsers(dest="user_command")
+
+    # user add
+    user_add_parser = user_subparsers.add_parser("add", help="Add a new user")
+    user_add_parser.add_argument("--name", default="", help="Display name for the user")
+    user_add_parser.add_argument(
+        "--role",
+        action="append",
+        choices=[r.value for r in Role],
+        help="Role to assign (can be specified multiple times)",
+    )
+
+    # user remove
+    user_remove_parser = user_subparsers.add_parser("remove", help="Remove a user")
+    user_remove_parser.add_argument("email", help="Email of the user to remove")
+
+    # user add-role
+    user_add_role_parser = user_subparsers.add_parser(
+        "add-role", help="Add a role to a user"
+    )
+    user_add_role_parser.add_argument("email", help="Email of the user")
+    user_add_role_parser.add_argument(
+        "role", choices=[r.value for r in Role], help="Role to add"
+    )
+
+    # user remove-role
+    user_remove_role_parser = user_subparsers.add_parser(
+        "remove-role", help="Remove a role from a user"
+    )
+    user_remove_role_parser.add_argument("email", help="Email of the user")
+    user_remove_role_parser.add_argument(
+        "role", choices=[r.value for r in Role], help="Role to remove"
+    )
+
+    # user list (for convenience)
+    user_subparsers.add_parser("list", help="List all users")
+
+    # role command with subcommands
+    role_parser = subparsers.add_parser("role", help="Manage roles")
+    role_subparsers = role_parser.add_subparsers(dest="role_command")
+
+    # role add
+    role_add_parser = role_subparsers.add_parser("add", help="Add a new role")
+    role_add_parser.add_argument("name", help="Name of the role to add")
+
+    # role remove
+    role_remove_parser = role_subparsers.add_parser("remove", help="Remove a role")
+    role_remove_parser.add_argument("name", help="Name of the role to remove")
+
+    # role list (for convenience)
+    role_subparsers.add_parser("list", help="List all available roles")
+
     parser.add_argument(
         "-w",
         "--working-directory",
@@ -243,6 +324,100 @@ def main() -> None:
         target = Path(args.target).resolve() if args.target else None
         run_check(target, working_dir)
         sys.exit(0)
+
+    elif args.command == "user":
+        if args.user_command == "add":
+            # Prompt for email
+            email = input("Email: ").strip()
+            if not email:
+                print("Error: Email cannot be empty.")
+                sys.exit(1)
+
+            # Check if user already exists
+            if get_user_by_email(email):
+                print(f"Error: User with email '{email}' already exists.")
+                sys.exit(1)
+
+            # Prompt for password with confirmation
+            password = prompt_for_password()
+
+            # Parse roles
+            roles = [Role(r) for r in args.role] if args.role else [Role.USER]
+
+            try:
+                user = create_user(email, password, args.name, roles)
+                print(f"Created user: {user.email}")
+                sys.exit(0)
+            except Exception as e:
+                print(f"Error: {e}")
+                sys.exit(1)
+
+        elif args.user_command == "remove":
+            if remove_user(args.email):
+                print(f"Removed user: {args.email}")
+                sys.exit(0)
+            else:
+                print(f"Error: User '{args.email}' not found.")
+                sys.exit(1)
+
+        elif args.user_command == "add-role":
+            role = Role(args.role)
+            if add_role_to_user(args.email, role):
+                print(f"Added role '{role.value}' to user '{args.email}'.")
+                sys.exit(0)
+            else:
+                print(f"Error: User '{args.email}' not found.")
+                sys.exit(1)
+
+        elif args.user_command == "remove-role":
+            role = Role(args.role)
+            if remove_role_from_user(args.email, role):
+                print(f"Removed role '{role.value}' from user '{args.email}'.")
+                sys.exit(0)
+            else:
+                print(f"Error: User '{args.email}' not found.")
+                sys.exit(1)
+
+        elif args.user_command == "list":
+            users = list_users()
+            if not users:
+                print("No users found.")
+            else:
+                for u in users:
+                    roles_str = ", ".join(r.value for r in u.roles)
+                    print(f"{u.email} ({u.name or 'No name'}) - Roles: {roles_str}")
+            sys.exit(0)
+
+        else:
+            user_parser.print_help()
+            sys.exit(0)
+
+    elif args.command == "role":
+        if args.role_command == "add":
+            print(
+                f"Error: Cannot add role '{args.name}'. Roles are defined in the "
+                "Role enum and require code changes to add new roles."
+            )
+            print(f"Available roles: {', '.join(r.value for r in Role)}")
+            sys.exit(1)
+
+        elif args.role_command == "remove":
+            print(
+                f"Error: Cannot remove role '{args.name}'. Roles are defined in the "
+                "Role enum and require code changes to remove roles."
+            )
+            print(f"Available roles: {', '.join(r.value for r in Role)}")
+            sys.exit(1)
+
+        elif args.role_command == "list":
+            print("Available roles:")
+            for role in get_all_roles():
+                print(f"  - {role.value}")
+            sys.exit(0)
+
+        else:
+            role_parser.print_help()
+            sys.exit(0)
 
     else:
         # No command provided

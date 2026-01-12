@@ -1,6 +1,3 @@
-import shutil
-from pathlib import Path
-import pytest
 from engn.project import delete_project
 
 
