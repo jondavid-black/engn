@@ -14,7 +14,7 @@ if str(src_path) not in sys.path:
 
 import flet as ft  # noqa: E402
 from sysengn.auth import User  # noqa: E402
-from sysengn.components.toolbar import Toolbar  # noqa: E402
+from engn.ui import Toolbar  # noqa: E402
 
 
 @given("the SysEngn toolbar component is initialized")  # type: ignore
