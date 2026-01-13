@@ -122,6 +122,99 @@ def run_check(target: Path | None, working_dir: Path) -> None:
             print(error)
 
 
+def run_print(target: Path | None, working_dir: Path) -> None:
+    """
+    Print enums, data types, and data from JSONL files in human-readable form.
+    """
+    files_to_process: List[Path] = []
+    if target:
+        if target.is_file():
+            if target.suffix == ".jsonl":
+                files_to_process.append(target)
+        elif target.is_dir():
+            files_to_process.extend(target.rglob("*.jsonl"))
+        else:
+            print(f"Error: Target '{target}' not found.")
+            sys.exit(1)
+    else:
+        config = ProjectConfig.load(working_dir)
+        for path_str in [config.pm_path, config.sysengn_path, config.ux_path]:
+            path = working_dir / path_str
+            if path.exists():
+                files_to_process.extend(path.rglob("*.jsonl"))
+
+    if not files_to_process:
+        print("No JSONL files found to print.")
+        return
+
+    from engn.data.models import TypeDef, Enumeration
+    from engn.data.storage import JSONLStorage
+    from pydantic import TypeAdapter
+
+    # 1. Collect all definitions across all files to support cross-file types
+    all_definitions = []
+    def_adapter = TypeAdapter(EngnDataModel)
+
+    for file_path in files_to_process:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        item = def_adapter.validate_json(line)
+                        all_definitions.append(item)
+                    except:
+                        pass  # Not a definition
+        except:
+            pass
+
+    # 2. Process each file and print
+    for file_path in files_to_process:
+        print(f"\n{'=' * 20} {file_path} {'=' * 20}")
+        storage = JSONLStorage(file_path, all_definitions)
+        try:
+            items = storage.read()
+            if not items:
+                print("No data items found.")
+                continue
+
+            for item in items:
+                if isinstance(item, Enumeration):
+                    print(f"\n[Enum] {item.name}")
+                    if item.description:
+                        print(f"  Description: {item.description}")
+                    print(f"  Values: {', '.join(item.values)}")
+                elif isinstance(item, TypeDef):
+                    print(f"\n[Type] {item.name}")
+                    if item.extends:
+                        print(f"  Extends: {item.extends}")
+                    if item.description:
+                        print(f"  Description: {item.description}")
+                    print("  Properties:")
+                    for prop in item.properties:
+                        presence = (
+                            "required" if prop.presence == "required" else "optional"
+                        )
+                        default = (
+                            f", default: {prop.default}"
+                            if prop.default is not None
+                            else ""
+                        )
+                        print(f"    - {prop.name}: {prop.type} ({presence}{default})")
+                else:
+                    # Data instance
+                    print(f"\n[{item.__class__.__name__}]")
+                    for field_name in item.__class__.model_fields:
+                        if field_name == "engn_type":
+                            continue
+                        val = getattr(item, field_name)
+                        print(f"  {field_name}: {val}")
+        except Exception as e:
+            print(f"Error reading file: {e}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Digital Engine - The Intelligent Engine for Building Systems"
@@ -240,6 +333,30 @@ def main() -> None:
 
     # role list (for convenience)
     role_subparsers.add_parser("list", help="List all available roles")
+
+    # data command with subcommands
+    data_parser = subparsers.add_parser("data", help="Data management commands")
+    data_subparsers = data_parser.add_subparsers(dest="data_command")
+
+    # data check
+    data_check_parser = data_subparsers.add_parser(
+        "check", help="Check validity of data files"
+    )
+    data_check_parser.add_argument(
+        "target",
+        nargs="?",
+        help="Path to JSONL file or directory to check (default: check all configured paths)",
+    )
+
+    # data print
+    data_print_parser = data_subparsers.add_parser(
+        "print", help="Print enums, data types, and data in human-readable form"
+    )
+    data_print_parser.add_argument(
+        "target",
+        nargs="?",
+        help="Path to JSONL file or directory to print (default: print all configured paths)",
+    )
 
     parser.add_argument(
         "-w",
@@ -439,6 +556,19 @@ def main() -> None:
 
         else:
             role_parser.print_help()
+            sys.exit(0)
+
+    elif args.command == "data":
+        if args.data_command == "check":
+            target = Path(args.target).resolve() if args.target else None
+            run_check(target, working_dir)
+            sys.exit(0)
+        elif args.data_command == "print":
+            target = Path(args.target).resolve() if args.target else None
+            run_print(target, working_dir)
+            sys.exit(0)
+        else:
+            data_parser.print_help()
             sys.exit(0)
 
     else:
