@@ -80,7 +80,6 @@ class Toolbar(ft.Container):
 
     def select_tab(self, index: int):
         """Programmatically select a tab by index."""
-        print(f"Selecting tab index: {index}")
         self.tabs_control.selected_index = index
         try:
             self.tabs_control.update()
