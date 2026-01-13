@@ -38,6 +38,7 @@ def test_drawer_resize_logic(mock_page):
     # delta_x is positive when moving right, negative when moving left
     event = MagicMock()
     event.delta_x = -10
+    event.data = '{"delta_x": -10}'
     drawer._handle_resize(event)
 
     # new_width = initial_width - (-10) = initial_width + 10
@@ -45,6 +46,7 @@ def test_drawer_resize_logic(mock_page):
 
     # Simulate a drag event to the right (increasing x, decreasing width)
     event.delta_x = 20
+    event.data = '{"delta_x": 20}'
     drawer._handle_resize(event)
     assert drawer.width == initial_width + 10 - 20
 
@@ -55,11 +57,13 @@ def test_drawer_resize_limits(mock_page):
     # Try to resize below minimum (150)
     event = MagicMock()
     event.delta_x = 300  # 350 - 300 = 50 < 150
+    event.data = '{"delta_x": 300}'
     drawer._handle_resize(event)
     assert drawer.width == 350  # Should not change
 
     # Try to resize above maximum (1200)
     event.delta_x = -1000  # 350 - (-1000) = 1350 > 1200
+    event.data = '{"delta_x": -1000}'
     drawer._handle_resize(event)
     assert drawer.width == 350  # Should not change
 
@@ -79,13 +83,13 @@ def test_drawer_coloring_in_light_mode(mock_page):
     assert drawer.title_text.color == ft.Colors.ON_SURFACE_VARIANT
 
 
-def test_drawer_resize_handle_wider(mock_page):
+def test_drawer_resize_handle_visuals(mock_page):
     drawer = RightDrawer(mock_page)
-    # Resize handle should be 10px wide
+    # Resize handle should be 10px wide with a VerticalDivider
     content = drawer.resize_handle.content
     assert isinstance(content, ft.Container)
     assert content.width == 10
-    assert content.bgcolor == ft.Colors.WHITE_10
+    assert isinstance(content.content, ft.VerticalDivider)
 
 
 def test_drawer_vertical_alignment(mock_page):

@@ -43,10 +43,19 @@ class RightDrawer(ft.Container):
         )
 
         # Resize handle on the left edge
+        # We use a 10px wide GestureDetector for a generous hit area,
+        # but only show a 1px line in the center.
         self.resize_handle = ft.GestureDetector(
             content=ft.Container(
                 width=10,
-                bgcolor=ft.Colors.WHITE_10,  # Slight visible background for better hit detection
+                bgcolor=ft.Colors.TRANSPARENT,
+                content=ft.VerticalDivider(
+                    width=1,
+                    thickness=1,
+                    color=ft.Colors.OUTLINE_VARIANT,
+                    opacity=0.5,
+                ),
+                alignment=ft.alignment.Alignment(0, 0),
             ),
             on_pan_update=self._handle_resize,
             on_hover=self._handle_resize_hover,
@@ -75,9 +84,15 @@ class RightDrawer(ft.Container):
     def _handle_resize_hover(self, e: ft.HoverEvent):
         """Highlight the resize handle on hover."""
         if isinstance(self.resize_handle.content, ft.Container):
-            self.resize_handle.content.bgcolor = (
-                ft.Colors.BLUE_400 if e.data == "true" else ft.Colors.WHITE_10
-            )
+            # Show a clear blue line on hover
+            divider = self.resize_handle.content.content
+            if isinstance(divider, ft.VerticalDivider):
+                divider.color = (
+                    ft.Colors.BLUE_400
+                    if e.data == "true"
+                    else ft.Colors.OUTLINE_VARIANT
+                )
+                divider.opacity = 1.0 if e.data == "true" else 0.5
             self.safe_update()
 
     def safe_update(self):
@@ -90,20 +105,23 @@ class RightDrawer(ft.Container):
 
     def _handle_resize(self, e: ft.DragUpdateEvent):
         # delta_x is positive when moving right, which should decrease width
+        # In some versions of Flet, attributes are in e.data or directly on e
         dx = getattr(e, "delta_x", 0)
-        if dx is None or dx == 0:
-            # Fallback for some environments
-            dx = getattr(e, "dx", 0)
+        if (dx is None or dx == 0) and e.data:
+            import json
 
-        if dx is None:
-            dx = 0
+            try:
+                data = json.loads(e.data)
+                dx = data.get("delta_x", 0)
+            except Exception:
+                dx = 0
 
         w = self.width
         if w is None:
             w = 350
 
         new_width = w - dx
-        if 150 <= new_width <= 1200:  # Increased max width
+        if 150 <= new_width <= 1200:
             self.width = new_width
             self.safe_update()
 
