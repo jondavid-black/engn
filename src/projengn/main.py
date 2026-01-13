@@ -17,6 +17,7 @@ from engn.ui import (
     ActualView,
     AnalyzeView,
     DocsView,
+    RightDrawer,
 )
 
 
@@ -69,9 +70,15 @@ class ProjEngnApp:
             on_profile=self._on_profile,
             working_directory=self.working_directory,
             on_admin=self._on_admin,
+            on_toggle_terminal=self._on_toggle_terminal,
+            on_toggle_search=self._on_toggle_search,
+            on_toggle_ai=self._on_toggle_ai,
             show_branch_dropdown=True,
             show_search=True,
         )
+
+        # Create drawer
+        self.right_drawer = RightDrawer(page)
 
         # Content area for views
         self.content_area = ft.Container(
@@ -83,8 +90,15 @@ class ProjEngnApp:
         self.layout = ft.Column(
             controls=[
                 self.toolbar,
-                ft.Divider(height=1),
-                self.content_area,
+                ft.Divider(height=1, thickness=1, color=ft.Colors.GREY_700),
+                ft.Row(
+                    [
+                        self.content_area,
+                        self.right_drawer,
+                    ],
+                    expand=True,
+                    spacing=0,
+                ),
             ],
             spacing=0,
             expand=True,
@@ -152,6 +166,94 @@ class ProjEngnApp:
             self.content_area.content = self.views[index]
         else:
             self.content_area.content = self.views[0]
+        self.page.update()
+
+    def _on_toggle_terminal(self) -> None:
+        content = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        "Terminal Emulator Stub",
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.GREEN_400,
+                    ),
+                    ft.Text(
+                        "$ ls -l\ntotal 0\n$ ",
+                        font_family="monospace",
+                        color=ft.Colors.GREEN_200,
+                    ),
+                    ft.TextField(
+                        label="Command",
+                        height=40,
+                        text_size=14,
+                        border_color=ft.Colors.GREY_700,
+                    ),
+                ]
+            ),
+            bgcolor=ft.Colors.BLACK,
+            padding=10,
+            expand=True,
+            border_radius=5,
+        )
+        self.right_drawer.toggle("Terminal", content)
+        self.page.update()
+
+    def _on_toggle_search(self) -> None:
+        content = ft.Column(
+            [
+                ft.TextField(
+                    label="Search Query",
+                    prefix_icon=ft.Icons.SEARCH,
+                    hint_text="Type to search...",
+                ),
+                ft.Text("Search results will appear here...", color=ft.Colors.GREY_500),
+                ft.Divider(),
+                ft.ListTile(
+                    leading=ft.Icon(ft.Icons.FILE_COPY),
+                    title=ft.Text("Sample Result 1"),
+                    subtitle=ft.Text("Match found in src/main.py"),
+                ),
+                ft.ListTile(
+                    leading=ft.Icon(ft.Icons.FILE_COPY),
+                    title=ft.Text("Sample Result 2"),
+                    subtitle=ft.Text("Match found in README.md"),
+                ),
+            ],
+            spacing=10,
+        )
+        self.right_drawer.toggle("Search", content)
+        self.page.update()
+
+    def _on_toggle_ai(self) -> None:
+        content = ft.Column(
+            [
+                ft.Container(
+                    content=ft.Text(
+                        "Hello! I am your AI assistant. How can I help you today?",
+                        color=ft.Colors.WHITE,
+                    ),
+                    bgcolor=ft.Colors.BLUE_900,
+                    padding=10,
+                    border_radius=10,
+                ),
+                ft.Container(expand=True),
+                ft.Row(
+                    [
+                        ft.TextField(
+                            hint_text="Ask me anything...",
+                            expand=True,
+                            border_color=ft.Colors.GREY_700,
+                        ),
+                        ft.IconButton(
+                            ft.Icons.SEND,
+                            icon_color=ft.Colors.BLUE_400,
+                        ),
+                    ]
+                ),
+            ],
+            expand=True,
+        )
+        self.right_drawer.toggle("AI Assistant", content)
         self.page.update()
 
     def build(self) -> ft.Column:

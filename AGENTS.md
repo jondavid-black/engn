@@ -49,7 +49,7 @@ The project uses **uv** for dependency management and task execution. All comman
 
 ## Issue Tracking
 
-This project is adamant about ensuring we make our work visible.  Any work you are assigned must be documented appropriately as epics, features, tasks, or bugs in bd (beads).  This includes updating status as work is performed.
+This project is adamant about ensuring we make our work visible.  Any work you are assigned must be documented appropriately as epics, features, tasks, or bugs in bd (beads).  This includes writing descriptions for issues and updating status as work is performed.
 
 This project uses **bd (beads)** for issue tracking.
 Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for auto-injection.

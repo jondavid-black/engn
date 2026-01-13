@@ -21,6 +21,7 @@ from engn.ui.file_tree_view import FileTreeView, create_file_tree, get_file_icon
 from engn.ui.home_page import HomeDomainPage
 from engn.ui.terminal_emulator import TerminalEmulator
 from engn.ui.toolbar import Toolbar
+from engn.ui.drawer import RightDrawer
 from engn.ui.tree_view import (
     TreeNode,
     TreeView,
@@ -51,6 +52,8 @@ __all__ = [
     "TerminalEmulator",
     # Toolbar
     "Toolbar",
+    # Drawer
+    "RightDrawer",
     # Views
     "LoginView",
     "UserProfileView",

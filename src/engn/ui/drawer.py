@@ -1,0 +1,104 @@
+import flet as ft
+
+
+class RightDrawer(ft.Container):
+    """A horizontally resizable right-side drawer component."""
+
+    def __init__(self, page: ft.Page):
+        super().__init__()
+        self.page_ref = page
+        self.width = 350
+        self.visible = False
+        self.bgcolor = ft.Colors.BLACK_12
+        self.border = ft.Border(left=ft.BorderSide(1, ft.Colors.GREY_700))
+        self.content = self._build_ui()
+
+    def _build_ui(self):
+        # Header with title and close button
+        self.title_text = ft.Text("", weight=ft.FontWeight.BOLD, size=16)
+        header = ft.Container(
+            content=ft.Row(
+                [
+                    self.title_text,
+                    ft.IconButton(
+                        ft.Icons.CLOSE,
+                        icon_size=20,
+                        on_click=lambda _: self.hide(),
+                        tooltip="Close Drawer",
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            ),
+            padding=ft.Padding(left=15, right=5, top=5, bottom=5),
+            bgcolor=ft.Colors.GREY_900,
+        )
+
+        # Content area for dynamic content
+        self.content_container = ft.Container(
+            expand=True,
+            padding=15,
+        )
+
+        # Resize handle on the left edge
+        self.resize_handle = ft.GestureDetector(
+            content=ft.Container(
+                width=4,
+                bgcolor=ft.Colors.TRANSPARENT,
+            ),
+            on_pan_update=self._handle_resize,
+            mouse_cursor=ft.MouseCursor.RESIZE_LEFT_RIGHT,
+        )
+
+        return ft.Row(
+            [
+                self.resize_handle,
+                ft.Column(
+                    [
+                        header,
+                        ft.Divider(height=1, thickness=1, color=ft.Colors.GREY_700),
+                        self.content_container,
+                    ],
+                    expand=True,
+                    spacing=0,
+                ),
+            ],
+            spacing=0,
+        )
+
+    def _handle_resize(self, e: ft.DragUpdateEvent):
+        # delta_x is positive when moving right, which should decrease width
+        dx = getattr(e, "delta_x", 0)
+        if dx is None:
+            dx = 0
+        w = self.width
+        if w is None:
+            w = 350
+        new_width = w - dx
+        if 150 <= new_width <= 800:
+            self.width = new_width
+            self.update()
+
+    def show(self, title: str, content: ft.Control):
+        """Show the drawer with specified title and content."""
+        self.title_text.value = title
+        self.content_container.content = content
+        self.visible = True
+        self.update()
+
+    def hide(self):
+        """Hide the drawer."""
+        self.visible = False
+        self.update()
+
+    def set_content(self, title: str, content: ft.Control):
+        """Update drawer content without changing visibility."""
+        self.title_text.value = title
+        self.content_container.content = content
+        self.update()
+
+    def toggle(self, title: str, content: ft.Control):
+        """Toggle drawer visibility or update content if already visible with different title."""
+        if self.visible and self.title_text.value == title:
+            self.hide()
+        else:
+            self.show(title, content)

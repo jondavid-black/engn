@@ -32,6 +32,8 @@ class Toolbar(ft.Container):
         working_directory: Optional[Path] = None,
         on_admin: Optional[Callable[[], None]] = None,
         on_toggle_terminal: Optional[Callable[[], None]] = None,
+        on_toggle_search: Optional[Callable[[], None]] = None,
+        on_toggle_ai: Optional[Callable[[], None]] = None,
         show_project_dropdown: bool = True,
         show_branch_dropdown: bool = True,
         show_search: bool = True,
@@ -49,6 +51,8 @@ class Toolbar(ft.Container):
             working_directory: Working directory for project management.
             on_admin: Optional callback for admin panel access.
             on_toggle_terminal: Optional callback to toggle terminal.
+            on_toggle_search: Optional callback to toggle search.
+            on_toggle_ai: Optional callback to toggle AI assistant.
             show_project_dropdown: Whether to show project dropdown.
             show_branch_dropdown: Whether to show branch dropdown.
             show_search: Whether to show search box.
@@ -63,6 +67,8 @@ class Toolbar(ft.Container):
         self.on_admin = on_admin
         self.logo_path = logo_path
         self.on_toggle_terminal = on_toggle_terminal
+        self.on_toggle_search = on_toggle_search
+        self.on_toggle_ai = on_toggle_ai
         self.working_directory = working_directory or Path.cwd()
         self.show_project_dropdown = show_project_dropdown
         self.show_branch_dropdown = show_branch_dropdown
@@ -291,6 +297,14 @@ class Toolbar(ft.Container):
             # Fallback for now if not provided
             print("Terminal toggle callback not provided")
 
+    def _on_search_click(self, e):
+        if self.on_toggle_search:
+            self.on_toggle_search()
+
+    def _on_ai_click(self, e):
+        if self.on_toggle_ai:
+            self.on_toggle_ai()
+
     def refresh_projects(self):
         """Refresh the project list in the dropdown."""
         if not self.show_project_dropdown:
@@ -364,21 +378,14 @@ class Toolbar(ft.Container):
         right_controls: list[ft.Control] = []
 
         if self.show_search:
-            search_box = ft.TextField(
-                hint_text="Search...",
-                height=40,
-                text_size=14,
-                content_padding=ft.Padding(10, 0, 0, 10),
-                width=200,
-                border_radius=20,
-                prefix_icon=ft.Icons.SEARCH,
-                bgcolor=ft.Colors.GREY_800,
-                border_color=ft.Colors.TRANSPARENT,
-                color=ft.Colors.WHITE,
-                hint_style=ft.TextStyle(color=ft.Colors.GREY_500),
+            search_icon = ft.IconButton(
+                ft.Icons.SEARCH,
+                on_click=self._on_search_click,
+                tooltip="Search",
+                icon_color=ft.Colors.GREY_400,
             )
-            right_controls.append(search_box)
-            right_controls.append(ft.Container(width=10))
+            right_controls.append(search_icon)
+            right_controls.append(ft.Container(width=5))
 
         if self.on_toggle_terminal:
             terminal_icon = ft.IconButton(
@@ -388,6 +395,16 @@ class Toolbar(ft.Container):
                 icon_color=ft.Colors.GREY_400,
             )
             right_controls.append(terminal_icon)
+            right_controls.append(ft.Container(width=5))
+
+        if self.on_toggle_ai:
+            ai_icon = ft.IconButton(
+                ft.Icons.ASSISTANT,
+                on_click=self._on_ai_click,
+                tooltip="AI Assistant",
+                icon_color=ft.Colors.GREY_400,
+            )
+            right_controls.append(ai_icon)
             right_controls.append(ft.Container(width=5))
 
         theme_icon = ft.IconButton(
