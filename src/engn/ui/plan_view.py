@@ -483,7 +483,7 @@ class PlanView(ft.Column):
                 ft.TextButton(
                     "Cancel", on_click=lambda _: setattr(dialog, "open", False)
                 ),
-                ft.ElevatedButton("Create", on_click=create_issue),
+                ft.Button("Create", on_click=create_issue),
             ],
         )
 

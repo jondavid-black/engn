@@ -65,6 +65,14 @@ class RightDrawer(ft.Container):
             spacing=0,
         )
 
+    def safe_update(self):
+        """Safely update the control only if it is attached to a page."""
+        try:
+            if self.page:
+                self.update()
+        except Exception:
+            pass
+
     def _handle_resize(self, e: ft.DragUpdateEvent):
         # delta_x is positive when moving right, which should decrease width
         dx = getattr(e, "delta_x", 0)
@@ -76,25 +84,25 @@ class RightDrawer(ft.Container):
         new_width = w - dx
         if 150 <= new_width <= 800:
             self.width = new_width
-            self.update()
+            self.safe_update()
 
     def show(self, title: str, content: ft.Control):
         """Show the drawer with specified title and content."""
         self.title_text.value = title
         self.content_container.content = content
         self.visible = True
-        self.update()
+        self.safe_update()
 
     def hide(self):
         """Hide the drawer."""
         self.visible = False
-        self.update()
+        self.safe_update()
 
     def set_content(self, title: str, content: ft.Control):
         """Update drawer content without changing visibility."""
         self.title_text.value = title
         self.content_container.content = content
-        self.update()
+        self.safe_update()
 
     def toggle(self, title: str, content: ft.Control):
         """Toggle drawer visibility or update content if already visible with different title."""
