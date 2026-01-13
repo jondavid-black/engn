@@ -1,11 +1,46 @@
-from typing import Any, Literal, Dict
+from typing import Any, Literal, Dict, Set
 import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from engn.data.primitives import PRIMITIVE_TYPE_MAP
 
 # Global registry to store defined types and enumerations for validation
 _MODEL_REGISTRY: Dict[str, Any] = {}
+
+
+def get_referenced_types(v: str) -> Set[str]:
+    """
+    Extracts all custom types referenced in a type definition string.
+    """
+    if v in PRIMITIVE_TYPE_MAP:
+        return set()
+
+    if v.startswith("list[") and v.endswith("]"):
+        inner = v[5:-1].strip()
+        return get_referenced_types(inner)
+
+    if v.startswith("map[") and v.endswith("]"):
+        inner = v[4:-1].strip()
+        parts = inner.split(",", 1)
+        if len(parts) == 2:
+            # map keys must be primitives (int, str, enum), but enum is a custom type
+            key_type = parts[0].strip()
+            val_type = parts[1].strip()
+            refs = get_referenced_types(val_type)
+            if key_type not in ("int", "str"):
+                refs.add(key_type)
+            return refs
+        return set()
+
+    if v.startswith("ref[") and v.endswith("]"):
+        inner = v[4:-1].strip()
+        parts = inner.split(".")
+        if len(parts) >= 1:
+            return {parts[0].strip()}
+        return set()
+
+    # Assume it's a direct type reference
+    return {v}
 
 
 class BaseDataModel(BaseModel):
@@ -125,10 +160,9 @@ class Property(BaseDataModel):
 
         # Check for list/map generics
         if v.startswith("list[") and v.endswith("]"):
-            # Simple recursive check (could be improved)
-            # inner = v[5:-1]
-            # Recursively validate inner type would be ideal but for now we just
-            # check primitives or assume it's a forward reference to a defined type
+            inner = v[5:-1].strip()
+            # Recursively validate structure
+            cls.validate_type(inner)
             return v
         if v.startswith("map[") and v.endswith("]"):
             inner = v[4:-1]
@@ -141,17 +175,21 @@ class Property(BaseDataModel):
                 )
 
             key_type = parts[0].strip()
-            # value_type = parts[1].strip() # We don't strictly validate value type yet as it can be any custom type
+            value_type = parts[1].strip()
 
-            if key_type not in ("int", "str", "enum"):
-                raise ValueError(
-                    f"Invalid map key type '{key_type}': Map key type must be one of: int, str, enum"
-                )
+            if (
+                key_type not in ("int", "str", "enum")
+                and key_type not in PRIMITIVE_TYPE_MAP
+            ):
+                # if not a primitive key type, it might be an enum reference
+                pass
+
+            # Validate value type structure recursively
+            cls.validate_type(value_type)
 
             # Validate that the value part does not contain top-level commas (meaning >2 args)
-            value_part = parts[1].strip()
             bracket_depth = 0
-            for char in value_part:
+            for char in value_type:
                 if char == "[":
                     bracket_depth += 1
                 elif char == "]":
@@ -195,8 +233,9 @@ class Property(BaseDataModel):
 
             return v
 
-        # If not primitive, we assume it's a reference to a TypeDef or Enum defined elsewhere
-        # Strict validation would require context of the whole schema, which we don't have here.
+        # If not primitive, we ensure it's a reference to a TypeDef or Enum defined elsewhere.
+        # Strict validation is performed at the Schema level to support forward references.
+        # If the registry is already populated (e.g. interactive use), we can check it.
         return v
 
 
@@ -232,3 +271,20 @@ class Schema(BaseDataModel):
     enums: list[Enumeration] = Field(
         default_factory=list, description="List of enumeration definitions"
     )
+
+    @model_validator(mode="after")
+    def validate_schema_types(self) -> "Schema":
+        """
+        Ensure all types referenced in properties are defined within the schema.
+        """
+        defined_types = {t.name for t in self.types} | {e.name for e in self.enums}
+
+        for typedef in self.types:
+            for prop in typedef.properties:
+                referenced = get_referenced_types(prop.type)
+                for ref_type in referenced:
+                    if ref_type not in defined_types:
+                        raise ValueError(
+                            f"Unknown type '{ref_type}' referenced in property '{typedef.name}.{prop.name}'"
+                        )
+        return self
