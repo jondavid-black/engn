@@ -1,30 +1,31 @@
 """Step definitions for application context BDD tests."""
 
+from typing import Any, cast
 from unittest.mock import MagicMock
 from behave import given, then, when
 from engn.core.context import AppContext, get_app_context
 import flet as ft
 
 
-@given("a new application context is initialized")
+@given("a new application context is initialized")  # type: ignore
 def step_context_initialized(context):
     """Initialize a new AppContext."""
     context.app_context = AppContext()
 
 
-@when('I set the active project to "{project_id}" in the context')
+@when('I set the active project to "{project_id}" in the context')  # type: ignore
 def step_set_active_project(context, project_id):
     """Set the active project in the context."""
     context.app_context.active_project_id = project_id
 
 
-@then('the active project in the context should be "{project_id}"')
+@then('the active project in the context should be "{project_id}"')  # type: ignore
 def step_check_active_project(context, project_id):
     """Check the active project in the context."""
     assert context.app_context.active_project_id == project_id
 
 
-@given("a component is subscribed to context changes")
+@given("a component is subscribed to context changes")  # type: ignore
 def step_subscribe_component(context):
     """Subscribe a mock component to context changes."""
     context.listener_notified = False
@@ -35,20 +36,20 @@ def step_subscribe_component(context):
     context.app_context.subscribe(listener)
 
 
-@then("the component should be notified of the change")
+@then("the component should be notified of the change")  # type: ignore
 def step_check_notification(context):
     """Check if the component was notified."""
     assert context.listener_notified, "Component was not notified of context change"
 
 
-@when('I select project "{project_id}" in the toolbar dropdown')
+@when('I select project "{project_id}" in the toolbar dropdown')  # type: ignore
 def step_select_project_toolbar(context, project_id):
     """Simulate selecting a project in the toolbar dropdown."""
     # Find the project dropdown
     dropdown = context.toolbar.project_dropdown
 
     # Simulate selection
-    e = MagicMock(spec=ft.ControlEvent)
+    e = cast(Any, MagicMock(spec=ft.ControlEvent))
     e.control = dropdown
     e.control.value = project_id
 
@@ -57,7 +58,7 @@ def step_select_project_toolbar(context, project_id):
         dropdown.on_select(e)
 
 
-@then('the application context active project should be "{project_id}"')
+@then('the application context active project should be "{project_id}"')  # type: ignore
 def step_check_app_context_project(context, project_id):
     """Check the active project in the application context."""
     # The toolbar uses get_app_context(page)

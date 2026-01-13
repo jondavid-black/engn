@@ -79,7 +79,7 @@ def test_get_app_context():
     # Initial call should create a new context
     context1 = get_app_context(page)
     assert isinstance(context1, AppContext)
-    assert page.app_context == context1
+    assert getattr(page, "app_context") == context1
 
     # Subsequent call should return the same context
     context2 = get_app_context(page)
