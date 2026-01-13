@@ -29,7 +29,8 @@ class TestMainAppExtended:
         """Test _on_logout callback."""
         with (
             patch("engn.ui.home_page.ProjectManager"),
-            patch("engn.ui.home_page.IssueTracker"),
+            patch("engn.ui.home_page.ProjectView"),
+            patch("engn.ui.home_page.PlanView"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_logout()
@@ -39,7 +40,8 @@ class TestMainAppExtended:
         """Test _on_profile callback."""
         with (
             patch("engn.ui.home_page.ProjectManager"),
-            patch("engn.ui.home_page.IssueTracker"),
+            patch("engn.ui.home_page.ProjectView"),
+            patch("engn.ui.home_page.PlanView"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_profile()
@@ -48,7 +50,8 @@ class TestMainAppExtended:
         """Test _on_admin callback."""
         with (
             patch("engn.ui.home_page.ProjectManager"),
-            patch("engn.ui.home_page.IssueTracker"),
+            patch("engn.ui.home_page.ProjectView"),
+            patch("engn.ui.home_page.PlanView"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_admin()
@@ -57,7 +60,8 @@ class TestMainAppExtended:
         """Test _on_toggle_terminal callback."""
         with (
             patch("engn.ui.home_page.ProjectManager"),
-            patch("engn.ui.home_page.IssueTracker"),
+            patch("engn.ui.home_page.ProjectView"),
+            patch("engn.ui.home_page.PlanView"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_toggle_terminal()
@@ -66,7 +70,8 @@ class TestMainAppExtended:
         """Test _on_tab_change logic."""
         with (
             patch("engn.ui.home_page.ProjectManager"),
-            patch("engn.ui.home_page.IssueTracker"),
+            patch("engn.ui.home_page.ProjectView"),
+            patch("engn.ui.home_page.PlanView"),
         ):
             app = MainApp(mock_page, mock_config)
             app._on_tab_change(1)

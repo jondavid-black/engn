@@ -10,6 +10,7 @@ from typing import Callable, Optional
 import flet as ft
 from engn.pm import ProjectManager
 from engn.core.auth import Role, User, update_user_theme_preference
+from engn.core.context import get_app_context
 
 
 class Toolbar(ft.Container):
@@ -67,6 +68,9 @@ class Toolbar(ft.Container):
         self.show_branch_dropdown = show_branch_dropdown
         self.show_search = show_search
 
+        self.app_context = get_app_context(self.page_ref)
+        self.app_context.subscribe(self._on_context_change)
+
         # Exposed controls
         self.tabs_control = self._build_tabs()
         self.avatar_control = self._build_avatar()
@@ -84,6 +88,26 @@ class Toolbar(ft.Container):
             print(f"Failed to update tabs_control for index {index}")
             pass
         self.on_tab_change(index)
+
+    def _on_context_change(self, context):
+        """Handle application context changes."""
+        # Update project dropdown value if it changed externally
+        if (
+            self.show_project_dropdown
+            and self.project_dropdown.value != context.active_project_id
+        ):
+            self.project_dropdown.value = context.active_project_id
+            self.project_dropdown.update()
+            # If project changed, branches might need refresh
+            self.refresh_branches()
+
+        # Update branch dropdown value if it changed externally
+        if (
+            self.show_branch_dropdown
+            and self.branch_dropdown.value != context.active_branch
+        ):
+            self.branch_dropdown.value = context.active_branch
+            self.branch_dropdown.update()
 
     def _build_tabs(self) -> ft.Tabs:
         def on_tab_click(e):
@@ -135,43 +159,16 @@ class Toolbar(ft.Container):
         # Set default active project to first available, or empty if none
         initial_project_id = projects[0].id if projects else None
 
-        # Only override session if not already set or invalid
-        session = getattr(self.page_ref, "session", None)
-
-        active_project_id = initial_project_id
-        if session:
-            # Modern Flet session access via .store
-            store = getattr(session, "store", session)
-            current_session_project = store.get("current_project_id")
-            if not current_session_project and initial_project_id:
-                store.set("current_project_id", initial_project_id)
-            elif current_session_project:
-                # Validate it still exists
-                if not any(p.id == current_session_project for p in projects):
-                    store.set("current_project_id", initial_project_id)
-            active_project_id = store.get("current_project_id")
+        # Use AppContext for active project
+        active_project_id = self.app_context.active_project_id
+        if not active_project_id and initial_project_id:
+            self.app_context.active_project_id = initial_project_id
+            active_project_id = initial_project_id
 
         def on_project_change(e):
             selected_id = e.control.value
-            if selected_id and session:
-                store = getattr(session, "store", session)
-                store.set("current_project_id", selected_id)
-                # Refresh current view if it depends on project
-                project_dropdown.update()
-
-                # Refresh branches
-                self.refresh_branches()
-
-                # If currently on MBSE screen (index 1), we might want to refresh content area
-                current_tab_idx = self.tabs_control.selected_index or 0
-
-                # Assuming standard tabs: Home, MBSE, UX, Docs
-                # If "MBSE" is in tabs list and selected
-                if (
-                    current_tab_idx < len(self.tabs_list)
-                    and self.tabs_list[current_tab_idx] == "MBSE"
-                ):
-                    self.on_tab_change(current_tab_idx)
+            if selected_id:
+                self.app_context.active_project_id = selected_id
 
         project_dropdown = ft.Dropdown(
             width=200,
@@ -186,18 +183,14 @@ class Toolbar(ft.Container):
             border_radius=5,
             leading_icon=ft.Icons.FOLDER_OPEN,
             tooltip="Select Active Project",
+            on_select=on_project_change,
         )
-        project_dropdown.on_select = on_project_change
         return project_dropdown
 
     def _build_branch_dropdown(self) -> ft.Dropdown:
         pm = ProjectManager(self.working_directory)
 
-        session = getattr(self.page_ref, "session", None)
-        active_project_id = None
-        if session:
-            store = getattr(session, "store", session)
-            active_project_id = store.get("current_project_id")
+        active_project_id = self.app_context.active_project_id
 
         branches = []
         if active_project_id:
@@ -208,11 +201,18 @@ class Toolbar(ft.Container):
 
         branch_options = [ft.dropdown.Option(b) for b in branches]
 
+        # Use AppContext for active branch
+        active_branch = self.app_context.active_branch
+        if not active_branch and branches:
+            self.app_context.active_branch = branches[0]
+            active_branch = branches[0]
+
         def on_branch_change(e):
             selected_branch = e.control.value
             if selected_branch and active_project_id:
                 try:
                     pm.checkout_branch(active_project_id, selected_branch)
+                    self.app_context.active_branch = selected_branch
                     self.page_ref.overlay.append(
                         ft.SnackBar(
                             ft.Text(f"Switched to branch: {selected_branch}"), open=True
@@ -230,15 +230,15 @@ class Toolbar(ft.Container):
             text_size=14,
             content_padding=ft.Padding(10, 0, 10, 0),
             options=branch_options,
-            value=branches[0] if branches else None,
+            value=active_branch,
             border_color=ft.Colors.TRANSPARENT,
             bgcolor=ft.Colors.GREY_800,
             color=ft.Colors.WHITE,
             border_radius=5,
             leading_icon=ft.Icons.ACCOUNT_TREE_OUTLINED,
             tooltip="Select Branch",
+            on_select=on_branch_change,
         )
-        branch_dropdown.on_select = on_branch_change
         return branch_dropdown
 
     def refresh_branches(self):
@@ -247,11 +247,7 @@ class Toolbar(ft.Container):
             return
 
         pm = ProjectManager(self.working_directory)
-        session = getattr(self.page_ref, "session", None)
-        active_project_id = None
-        if session:
-            store = getattr(session, "store", session)
-            active_project_id = store.get("current_project_id")
+        active_project_id = self.app_context.active_project_id
 
         branches = []
         if active_project_id:
@@ -261,7 +257,12 @@ class Toolbar(ft.Container):
                 pass
 
         self.branch_dropdown.options = [ft.dropdown.Option(b) for b in branches]
-        self.branch_dropdown.value = branches[0] if branches else None
+
+        # Ensure context branch is valid for this project
+        if branches and self.app_context.active_branch not in branches:
+            self.app_context.active_branch = branches[0]
+
+        self.branch_dropdown.value = self.app_context.active_branch
         self.branch_dropdown.update()
 
     def _toggle_theme(self, e):
@@ -303,11 +304,12 @@ class Toolbar(ft.Container):
         ]
 
         # Check if current value is still valid
-        if self.project_dropdown.value and not any(
-            p.id == self.project_dropdown.value for p in projects
+        if self.app_context.active_project_id and not any(
+            p.id == self.app_context.active_project_id for p in projects
         ):
-            self.project_dropdown.value = projects[0].id if projects else None
+            self.app_context.active_project_id = projects[0].id if projects else None
 
+        self.project_dropdown.value = self.app_context.active_project_id
         self.project_dropdown.update()
 
     def refresh_avatar(self):

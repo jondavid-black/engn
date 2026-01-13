@@ -12,6 +12,7 @@ from typing import Any, Callable
 import flet as ft
 
 from engn.ui.tree_view import TreeNode, TreeView, delete_node, move_node
+from engn.core.context import get_app_context
 
 
 # File type to icon mapping
@@ -196,11 +197,49 @@ class FileTreeView(TreeView):
 
         self._path_to_node: dict[str, TreeNode] = {}
 
+        # Subscribe to context changes if page is available
+        self.app_context = None
+        if hasattr(kwargs.get("page"), "app_context") or "page" in kwargs:
+            # This is a bit tricky since page might not be in kwargs directly
+            # and might be passed later or accessed via self.page
+            pass
+
     def did_mount(self) -> None:
         """Load the initial tree when mounted."""
+        # Use try-except because self.page raises RuntimeError if not attached
+        page = None
+        try:
+            page = self.page
+        except RuntimeError:
+            pass
+
+        if page:
+            self.app_context = get_app_context(page)
+            self.app_context.subscribe(self._on_context_change)
+
+            # If no root path was provided, use the active project from context
+            if not self.root_path and self.app_context.active_project_id:
+                # We need working directory here, but FileTreeView doesn't have it.
+                # Usually it's passed as root_path.
+                pass
+
         if self.root_path:
             self.load_directory(self.root_path)
         super().did_mount()
+
+    def will_unmount(self) -> None:
+        """Unsubscribe from context changes."""
+        if self.app_context:
+            self.app_context.unsubscribe(self._on_context_change)
+        super().will_unmount()
+
+    def _on_context_change(self, context):
+        """Handle context changes."""
+        # For FileTreeView, it usually depends on root_path.
+        # If the root_path is supposed to change with the project,
+        # the parent component usually handles it.
+        # But we can refresh if needed.
+        self.refresh()
 
     def load_directory(self, path: str | Path) -> None:
         """Load a directory as the root of the tree.
