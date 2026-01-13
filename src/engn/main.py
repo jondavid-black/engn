@@ -38,7 +38,30 @@ def prompt_for_password() -> str:
         return password
 
 
-def run_check(target: Path | None, working_dir: Path) -> None:
+def print_error(
+    message: str,
+    file_path: Path | None = None,
+    line_num: int | None = None,
+    verbose: bool = False,
+) -> None:
+    """
+    Print an error message in a consistent format.
+    Format: ERROR: <file_name> at line <line_number> - <error_message>
+    """
+    if file_path:
+        if line_num is not None:
+            print(f"ERROR: {file_path} at line {line_num} - {message}")
+        else:
+            print(f"ERROR: {file_path} - {message}")
+    else:
+        print(f"ERROR: {message}")
+    if verbose:
+        import traceback
+
+        traceback.print_exc()
+
+
+def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> None:
     """
     Check validity of JSONL files in target path or configured paths.
     """
@@ -106,12 +129,24 @@ def run_check(target: Path | None, working_dir: Path) -> None:
                         if len(msg) > 200:
                             msg = msg[:197] + "..."
 
-                        errors.append(f"{file_path}:{line_num}: {msg}")
+                        errors.append(f"ERROR: {file_path} at line {line_num} - {msg}")
+                        if verbose:
+                            import traceback
+
+                            traceback.print_exc()
                     except Exception as e:
-                        errors.append(f"{file_path}:{line_num}: {str(e)}")
+                        errors.append(f"ERROR: {file_path} at line {line_num} - {str(e)}")
+                        if verbose:
+                            import traceback
+
+                            traceback.print_exc()
 
         except Exception as e:
-            errors.append(f"{file_path}: Failed to open/read file: {str(e)}")
+            errors.append(f"ERROR: {file_path} - Failed to open/read file: {str(e)}")
+            if verbose:
+                import traceback
+
+                traceback.print_exc()
 
     # 3. Report results
     if not errors:
@@ -122,7 +157,7 @@ def run_check(target: Path | None, working_dir: Path) -> None:
             print(error)
 
 
-def run_print(target: Path | None, working_dir: Path) -> None:
+def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> None:
     """
     Print enums, data types, and data from JSONL files in human-readable form.
     """
@@ -167,14 +202,19 @@ def run_print(target: Path | None, working_dir: Path) -> None:
                         all_definitions.append(item)
                     except:
                         pass  # Not a definition
-        except:
-            pass
+        except Exception as e:
+            if verbose:
+                import traceback
+
+                traceback.print_exc()
+            else:
+                print(f"ERROR: {file_path} - Failed to read: {e}")
 
     # 2. Process each file and print
     for file_path in files_to_process:
         print(f"\n{'=' * 20} {file_path} {'=' * 20}")
-        storage = JSONLStorage(file_path, all_definitions)
         try:
+            storage = JSONLStorage(file_path, all_definitions)
             items = storage.read()
             if not items:
                 print("No data items found.")
@@ -212,7 +252,12 @@ def run_print(target: Path | None, working_dir: Path) -> None:
                         val = getattr(item, field_name)
                         print(f"  {field_name}: {val}")
         except Exception as e:
-            print(f"Error reading file: {e}")
+            if verbose:
+                import traceback
+
+                traceback.print_exc()
+            else:
+                print(f"ERROR: {file_path} - {e}")
 
 
 def main() -> None:
@@ -278,6 +323,12 @@ def main() -> None:
         "target",
         nargs="?",
         help="Path to JSONL file or directory to check (default: check all configured paths)",
+    )
+    proj_check_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show detailed error traces",
     )
 
     # user command with subcommands
@@ -347,6 +398,12 @@ def main() -> None:
         nargs="?",
         help="Path to JSONL file or directory to check (default: check all configured paths)",
     )
+    data_check_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show detailed error traces",
+    )
 
     # data print
     data_print_parser = data_subparsers.add_parser(
@@ -356,6 +413,19 @@ def main() -> None:
         "target",
         nargs="?",
         help="Path to JSONL file or directory to print (default: print all configured paths)",
+    )
+    data_print_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show detailed error traces",
+    )
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show detailed error traces",
     )
 
     parser.add_argument(
@@ -386,7 +456,7 @@ def main() -> None:
                 print(f"Created new project: {args.name}")
                 sys.exit(0)
             except Exception as e:
-                print(f"Error: {e}")
+                print_error(str(e), verbose=args.verbose)
                 sys.exit(1)
 
         elif args.proj_command == "clone":
@@ -395,7 +465,7 @@ def main() -> None:
                 print(f"Cloned project from {args.url}")
                 sys.exit(0)
             except Exception as e:
-                print(f"Error: {e}")
+                print_error(str(e), verbose=args.verbose)
                 sys.exit(1)
 
         elif args.proj_command == "delete":
@@ -411,7 +481,7 @@ def main() -> None:
                 print(f"Deleted project: {args.name}")
                 sys.exit(0)
             else:
-                print(f"Error: Project '{args.name}' not found.")
+                print_error(f"Project '{args.name}' not found.", verbose=args.verbose)
                 sys.exit(1)
 
         elif args.proj_command == "init":
@@ -424,7 +494,9 @@ def main() -> None:
                 target_path = Path.cwd() / args.path
 
             if not target_path.exists():
-                print(f"Error: Directory '{target_path}' not found.")
+                print_error(
+                    f"Directory '{target_path}' not found.", verbose=args.verbose
+                )
                 sys.exit(1)
 
             project.init_project_structure(target_path)
@@ -457,7 +529,7 @@ def main() -> None:
 
         elif args.proj_command == "check":
             target = Path(args.target).resolve() if args.target else None
-            run_check(target, working_dir)
+            run_check(target, working_dir, args.verbose)
             sys.exit(0)
 
         else:
@@ -561,11 +633,11 @@ def main() -> None:
     elif args.command == "data":
         if args.data_command == "check":
             target = Path(args.target).resolve() if args.target else None
-            run_check(target, working_dir)
+            run_check(target, working_dir, args.verbose)
             sys.exit(0)
         elif args.data_command == "print":
             target = Path(args.target).resolve() if args.target else None
-            run_print(target, working_dir)
+            run_print(target, working_dir, args.verbose)
             sys.exit(0)
         else:
             data_parser.print_help()
