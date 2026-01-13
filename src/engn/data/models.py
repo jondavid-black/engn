@@ -1,8 +1,11 @@
-from typing import Any, Literal
+from typing import Any, Literal, Dict
 import datetime
 from pydantic import BaseModel, Field, field_validator
 
 from engn.data.primitives import PRIMITIVE_TYPE_MAP
+
+# Global registry to store defined types and enumerations for validation
+_MODEL_REGISTRY: Dict[str, Any] = {}
 
 
 class BaseDataModel(BaseModel):
@@ -22,6 +25,9 @@ class Enumeration(BaseDataModel):
         default=None, description="Description of what this enum represents"
     )
     values: list[str] = Field(description="List of allowed values")
+
+    def model_post_init(self, __context: Any) -> None:
+        _MODEL_REGISTRY[self.name] = self
 
 
 class Property(BaseDataModel):
@@ -171,6 +177,22 @@ class Property(BaseDataModel):
                 raise ValueError(
                     f"Invalid ref definition '{v}': Type and Property names cannot be empty"
                 )
+            # ensure parts[0] is a known type and parts[1] is a property of that type
+            type_name = parts[0]
+            prop_name = parts[1]
+
+            if type_name in _MODEL_REGISTRY:
+                target = _MODEL_REGISTRY[type_name]
+                if isinstance(target, TypeDef):
+                    if not any(p.name == prop_name for p in target.properties):
+                        raise ValueError(
+                            f"Property '{prop_name}' not found in type '{type_name}'"
+                        )
+                elif isinstance(target, Enumeration):
+                    raise ValueError(
+                        f"Cannot reference property '{prop_name}' on Enumeration '{type_name}'"
+                    )
+
             return v
 
         # If not primitive, we assume it's a reference to a TypeDef or Enum defined elsewhere
@@ -195,18 +217,18 @@ class TypeDef(BaseDataModel):
         default_factory=list, description="List of properties defining this type"
     )
 
+    def model_post_init(self, __context: Any) -> None:
+        _MODEL_REGISTRY[self.name] = self
+
 
 class Schema(BaseDataModel):
     """
-    Container for defining data types and enumerations.
+    Defines a complete data schema consisting of multiple types and enumerations.
     """
 
-    # Schema doesn't need a discriminator if it's not stored in the mixed list,
-    # but for consistency we can add it or leave it.
-    # Usually Schema is a container, not an item in the stream.
     types: list[TypeDef] = Field(
-        default_factory=list, description="Collection of data type definitions"
+        default_factory=list, description="List of type definitions"
     )
     enums: list[Enumeration] = Field(
-        default_factory=list, description="Collection of enumeration definitions"
+        default_factory=list, description="List of enumeration definitions"
     )

@@ -65,16 +65,15 @@ def _resolve_type(
         # Check registry for the target type
         target_model = registry.get(target_type_name)
         if target_model is None:
-            # If not found, we return Any for now to avoid blocking model creation.
-            # The storage layer will handle actual reference validation later.
-            return Any
+            # If not found, we return None so the dependency resolution loop
+            # in gen_pydantic_models knows we are still waiting for this type.
+            return None
 
         # Check if the property exists on the target model
         if target_prop_name not in target_model.model_fields:
-            # If the model exists but property doesn't, it might be a TypeDef that was
-            # partially defined or we are in a middle of a pass.
-            # To be safe and support circularity, we return Any.
-            return Any
+            raise ValueError(
+                f"Property '{target_prop_name}' not found in type '{target_type_name}'"
+            )
 
         target_field = target_model.model_fields[target_prop_name]
         return target_field.annotation

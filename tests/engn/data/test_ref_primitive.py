@@ -72,15 +72,17 @@ def test_ref_parsing_error_missing_target_type():
 
 
 def test_ref_parsing_error_missing_target_property():
-    schema_defs: List[Union[TypeDef, Enumeration]] = [
-        TypeDef(name="User", properties=[Property(name="id", type="int")]),
-        TypeDef(
-            name="BadProp",
-            properties=[Property(name="bad", type="ref[User.non_existent]")],
-        ),
-    ]
+    from pydantic import ValidationError
 
     with pytest.raises(
-        ValueError, match="Property 'non_existent' not found in type 'User'"
+        (ValueError, ValidationError),
+        match="Property 'non_existent' not found in type 'User'",
     ):
+        schema_defs: List[Union[TypeDef, Enumeration]] = [
+            TypeDef(name="User", properties=[Property(name="id", type="int")]),
+            TypeDef(
+                name="BadProp",
+                properties=[Property(name="bad", type="ref[User.non_existent]")],
+            ),
+        ]
         gen_pydantic_models(schema_defs)
