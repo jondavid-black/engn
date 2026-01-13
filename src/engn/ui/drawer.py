@@ -46,7 +46,7 @@ class RightDrawer(ft.Container):
         self.resize_handle = ft.GestureDetector(
             content=ft.Container(
                 width=10,
-                bgcolor=ft.Colors.TRANSPARENT,
+                bgcolor=ft.Colors.WHITE_10,  # Slight visible background for better hit detection
             ),
             on_pan_update=self._handle_resize,
             on_hover=self._handle_resize_hover,
@@ -69,13 +69,14 @@ class RightDrawer(ft.Container):
                 ),
             ],
             spacing=0,
+            vertical_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 
     def _handle_resize_hover(self, e: ft.HoverEvent):
         """Highlight the resize handle on hover."""
         if isinstance(self.resize_handle.content, ft.Container):
             self.resize_handle.content.bgcolor = (
-                ft.Colors.BLUE_400 if e.data == "true" else ft.Colors.TRANSPARENT
+                ft.Colors.BLUE_400 if e.data == "true" else ft.Colors.WHITE_10
             )
             self.safe_update()
 
@@ -90,7 +91,7 @@ class RightDrawer(ft.Container):
     def _handle_resize(self, e: ft.DragUpdateEvent):
         # delta_x is positive when moving right, which should decrease width
         dx = getattr(e, "delta_x", 0)
-        if dx is None:
+        if dx is None or dx == 0:
             # Fallback for some environments
             dx = getattr(e, "dx", 0)
 

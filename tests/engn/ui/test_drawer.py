@@ -85,3 +85,11 @@ def test_drawer_resize_handle_wider(mock_page):
     content = drawer.resize_handle.content
     assert isinstance(content, ft.Container)
     assert content.width == 10
+    assert content.bgcolor == ft.Colors.WHITE_10
+
+
+def test_drawer_vertical_alignment(mock_page):
+    drawer = RightDrawer(mock_page)
+    row = drawer.content
+    assert isinstance(row, ft.Row)
+    assert row.vertical_alignment == ft.CrossAxisAlignment.STRETCH
