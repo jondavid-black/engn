@@ -5,7 +5,7 @@ Feature: Initialize Engn Project
 
   Scenario: Initialize in current directory
     Given the engn application is installed
-    When I run "engn proj init"
+    When I run "engn init"
     Then a file named "engn.jsonl" should exist
     And a directory named "arch" should exist
     And a directory named "pm" should exist
@@ -15,7 +15,7 @@ Feature: Initialize Engn Project
 
   Scenario: Initialize in a specific directory
     Given I create a temporary directory named "test_project"
-    When I run "engn proj init test_project"
+    When I run "engn init test_project"
     Then a file named "test_project/engn.jsonl" should exist
     And a directory named "test_project/arch" should exist
     And a directory named "test_project/pm" should exist

@@ -100,7 +100,7 @@ def print_error(
         traceback.print_exc()
 
 
-def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> None:
+def run_check(target: Path | None, project_root: Path, verbose: bool = False) -> None:
     """
     Check validity of JSONL files in target path or configured paths.
     """
@@ -118,10 +118,10 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
             sys.exit(1)
     else:
         # Load config to get paths
-        config = ProjectConfig.load(working_dir)
+        config = ProjectConfig.load(project_root)
         # Check all configured paths
         for path_str in [config.pm_path, config.sysengn_path]:
-            path = working_dir / path_str
+            path = project_root / path_str
             if path.exists():
                 files_to_check.extend(path.rglob("*.jsonl"))
 
@@ -405,7 +405,7 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                 print(f"{file_path} at line {line_num}:  ERROR - {msg}")
 
 
-def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> None:
+def run_print(target: Path | None, project_root: Path, verbose: bool = False) -> None:
     """
     Print enums, data types, and data from JSONL files in human-readable form.
     """
@@ -420,9 +420,9 @@ def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> 
             print(f"Error: Target '{target}' not found.")
             sys.exit(1)
     else:
-        config = ProjectConfig.load(working_dir)
+        config = ProjectConfig.load(project_root)
         for path_str in [config.pm_path, config.sysengn_path]:
-            path = working_dir / path_str
+            path = project_root / path_str
             if path.exists():
                 files_to_process.extend(path.rglob("*.jsonl"))
 
@@ -591,60 +591,41 @@ def main() -> None:
     # Create subparsers for commands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # proj command with subcommands
-    proj_parser = subparsers.add_parser("proj", help="Project management commands")
-    proj_subparsers = proj_parser.add_subparsers(dest="proj_command")
-
-    # proj new <name>
-    proj_new_parser = proj_subparsers.add_parser("new", help="Create a new project")
-    proj_new_parser.add_argument("name", help="Name of the new project")
-
-    # proj clone <url>
-    proj_clone_parser = proj_subparsers.add_parser(
-        "clone", help="Clone an existing project"
+    # init [path]
+    init_parser = subparsers.add_parser(
+        "init", help="Initialize an engn project in a directory"
     )
-    proj_clone_parser.add_argument("url", help="URL of the project to clone")
-    proj_clone_parser.add_argument(
-        "--name", help="Optional name for the project directory"
-    )
-
-    # proj delete <name>
-    proj_delete_parser = proj_subparsers.add_parser("delete", help="Delete a project")
-    proj_delete_parser.add_argument("name", help="Name of the project to delete")
-    proj_delete_parser.add_argument(
-        "-y", "--yes", action="store_true", help="Confirm deletion without prompting"
-    )
-
-    # proj init [path]
-    proj_init_parser = proj_subparsers.add_parser(
-        "init", help="Initialize a project structure in a directory"
-    )
-    proj_init_parser.add_argument(
+    init_parser.add_argument(
         "path",
         nargs="?",
         default=".",
-        help="Path or name of project to initialize (default: current directory)",
+        help="Path to initialize (default: current directory)",
     )
 
-    # proj status <name>
-    proj_status_parser = proj_subparsers.add_parser(
-        "status", help="Show project status"
-    )
-    proj_status_parser.add_argument("name", help="Name of the project")
-
-    # proj list
-    proj_subparsers.add_parser("list", help="List all projects")
-
-    # proj check
-    proj_check_parser = proj_subparsers.add_parser(
-        "check", help="Check validity of data files"
-    )
-    proj_check_parser.add_argument(
+    # check
+    check_parser = subparsers.add_parser("check", help="Check validity of data files")
+    check_parser.add_argument(
         "target",
         nargs="?",
         help="Path to JSONL file or directory to check (default: check all configured paths)",
     )
-    proj_check_parser.add_argument(
+    check_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show detailed error traces",
+    )
+
+    # print
+    print_parser = subparsers.add_parser(
+        "print", help="Print enums, data types, and data in human-readable form"
+    )
+    print_parser.add_argument(
+        "target",
+        nargs="?",
+        help="Path to JSONL file or directory to print (default: print all configured paths)",
+    )
+    print_parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -748,13 +729,6 @@ def main() -> None:
         help="Show detailed error traces",
     )
 
-    parser.add_argument(
-        "-w",
-        "--working-directory",
-        default=".",
-        help="The working directory for projects (default: current directory)",
-    )
-
     args = parser.parse_args()
 
     # Load standard modules before processing commands
@@ -764,100 +738,38 @@ def main() -> None:
         print(get_version())
         sys.exit(0)
 
-    # Common argument handling
-    working_dir = Path(args.working_directory).resolve()
-
     # Initialize auth config path
+    # We use the current directory or the init path as the project root
+    project_root = Path.cwd().resolve()
+    if args.command == "init" and args.path:
+        # Resolve target path relative to current working directory
+        target_path = Path(args.path)
+        if not target_path.is_absolute():
+            target_path = Path.cwd() / target_path
+        project_root = target_path.resolve()
+
     from engn.core.auth import set_config_path
 
-    set_config_path(working_dir / "engn.jsonl")
+    set_config_path(project_root / "engn.jsonl")
 
-    if args.command == "proj":
-        if args.proj_command == "new":
-            try:
-                project.create_new_project(args.name, working_dir)
-                print(f"Created new project: {args.name}")
-                sys.exit(0)
-            except Exception as e:
-                print_error(str(e), verbose=args.verbose)
-                sys.exit(1)
+    if args.command == "init":
+        # target_path is already determined above if args.path was provided
+        if not project_root.exists():
+            project_root.mkdir(parents=True)
 
-        elif args.proj_command == "clone":
-            try:
-                project.clone_project(args.url, working_dir, args.name)
-                print(f"Cloned project from {args.url}")
-                sys.exit(0)
-            except Exception as e:
-                print_error(str(e), verbose=args.verbose)
-                sys.exit(1)
+        project.init_project_structure(project_root)
+        print(f"Initialized engn project in {project_root}")
+        sys.exit(0)
 
-        elif args.proj_command == "delete":
-            if not args.yes:
-                confirm = input(
-                    f"Are you sure you want to delete project '{args.name}'? (y/N): "
-                )
-                if confirm.lower() != "y":
-                    print("Deletion cancelled.")
-                    sys.exit(0)
+    elif args.command == "check":
+        target = Path(args.target).resolve() if args.target else None
+        run_check(target, project_root, args.verbose)
+        sys.exit(0)
 
-            if project.delete_project(args.name, working_dir):
-                print(f"Deleted project: {args.name}")
-                sys.exit(0)
-            else:
-                print_error(f"Project '{args.name}' not found.", verbose=args.verbose)
-                sys.exit(1)
-
-        elif args.proj_command == "init":
-            # If path looks like a simple name, try resolving it in working_dir
-            # Otherwise, resolve it relative to current working directory
-            target_path = Path(args.path)
-            if not target_path.is_absolute() and len(target_path.parts) == 1:
-                target_path = working_dir / args.path
-            else:
-                target_path = Path.cwd() / args.path
-
-            if not target_path.exists():
-                print_error(
-                    f"Directory '{target_path}' not found.", verbose=args.verbose
-                )
-                sys.exit(1)
-
-            project.init_project_structure(target_path)
-            print(f"Initialized engn project in {target_path}")
-            sys.exit(0)
-
-        elif args.proj_command == "list":
-            projects = project.list_projects(working_dir)
-            if not projects:
-                print("No projects found.")
-            else:
-                for p in projects:
-                    print(p)
-            sys.exit(0)
-
-        elif args.proj_command == "status":
-            status = project.get_project_status(args.name, working_dir)
-            if not status["exists"]:
-                print(f"Project '{args.name}' not found.")
-                sys.exit(1)
-
-            print(f"Project: {status['name']}")
-            print(f"Path: {status['path']}")
-            print(f"Git: {'Yes' if status['is_git'] else 'No'}")
-            print(f"Beads: {'Yes' if status['is_beads'] else 'No'}")
-            print(f"Engn: {'Yes' if status['is_engn'] else 'No'}")
-            if "git_status" in status:
-                print(f"Git Status: {status['git_status']}")
-            sys.exit(0)
-
-        elif args.proj_command == "check":
-            target = Path(args.target).resolve() if args.target else None
-            run_check(target, working_dir, args.verbose)
-            sys.exit(0)
-
-        else:
-            proj_parser.print_help()
-            sys.exit(0)
+    elif args.command == "print":
+        target = Path(args.target).resolve() if args.target else None
+        run_print(target, project_root, args.verbose)
+        sys.exit(0)
 
     elif args.command == "user":
         if args.user_command == "add":
@@ -956,11 +868,11 @@ def main() -> None:
     elif args.command == "data":
         if args.data_command == "check":
             target = Path(args.target).resolve() if args.target else None
-            run_check(target, working_dir, args.verbose)
+            run_check(target, project_root, args.verbose)
             sys.exit(0)
         elif args.data_command == "print":
             target = Path(args.target).resolve() if args.target else None
-            run_print(target, working_dir, args.verbose)
+            run_print(target, project_root, args.verbose)
             sys.exit(0)
         else:
             data_parser.print_help()

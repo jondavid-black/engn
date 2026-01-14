@@ -24,8 +24,8 @@ def step_run_command(context, command):
     # We use 'uv run' to ensure we are in the correct environment or call python -m
     cmd_parts = command.split()
     # Replace the command name with python -m <module> execution for test robustness in dev
-    if cmd_parts[0] in ["engn", "sysengn", "projengn"]:
-        cmd_parts[0] = f"{cmd_parts[0]}.main"
+    if cmd_parts[0] == "engn":
+        cmd_parts[0] = "engn.main"
 
     # Execute as a module
     env = os.environ.copy()

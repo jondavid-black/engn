@@ -4,8 +4,8 @@ from engn.main import main
 
 
 def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
-    # Mock sys.argv to simulate running 'engn proj init'
-    with patch("sys.argv", ["engn", "proj", "init"]):
+    # Mock sys.argv to simulate running 'engn init'
+    with patch("sys.argv", ["engn", "init"]):
         # Mock Path.cwd to return the temporary directory
         with patch("pathlib.Path.cwd", return_value=tmp_path):
             with patch("shutil.which", return_value="/usr/bin/bd"):
@@ -38,9 +38,32 @@ def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
     assert "Initialized engn project in" in captured.out
 
 
+def test_engn_init_command_with_path(tmp_path, capsys):
+    target_path = tmp_path / "subdir"
+    # Mock sys.argv to simulate running 'engn init subdir'
+    with patch("sys.argv", ["engn", "init", str(target_path)]):
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            with patch("shutil.which", return_value="/usr/bin/bd"):
+                with patch("subprocess.run") as mock_run:
+                    with pytest.raises(SystemExit) as e:
+                        main()
+                    assert e.value.code == 0
+
+                    # Verify beads initialization
+                    mock_run.assert_called_with(
+                        ["bd", "init"], cwd=target_path, check=True
+                    )
+
+    # Check if directories were created
+    assert target_path.is_dir()
+    assert (target_path / "arch").is_dir()
+    assert (target_path / "pm").is_dir()
+    assert (target_path / "engn.jsonl").is_file()
+
+
 def test_engn_init_command_without_beads_installed(tmp_path, capsys):
-    # Mock sys.argv to simulate running 'engn proj init'
-    with patch("sys.argv", ["engn", "proj", "init"]):
+    # Mock sys.argv to simulate running 'engn init'
+    with patch("sys.argv", ["engn", "init"]):
         with patch("pathlib.Path.cwd", return_value=tmp_path):
             # Mock shutil.which to return None, simulating 'bd' not found
             with patch("shutil.which", return_value=None):
