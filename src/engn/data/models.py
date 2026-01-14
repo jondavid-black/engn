@@ -328,22 +328,22 @@ class Import(BaseDataModel):
     Defines an import directive to include other JSONL files or modules.
 
     Use files to include additional JSONL files in processing.
-    Use module to reference a Python module (no action taken currently).
+    Use modules to reference Python modules (no action taken currently).
     """
 
     engn_type: Literal["import"] = "import"
     files: list[str] | None = Field(
         default=None, description="List of file paths to include in processing"
     )
-    module: str | None = Field(
-        default=None, description="Python module name to import (reserved for future use)"
+    modules: list[str] | None = Field(
+        default=None, description="List of Python module names to import (reserved for future use)"
     )
 
     @model_validator(mode="after")
     def validate_import(self) -> "Import":
-        """Ensure at least one of files or module is provided."""
-        if not self.files and not self.module:
-            raise ValueError("Import must specify either 'files' or 'module'")
-        if self.files and self.module:
-            raise ValueError("Import cannot specify both 'files' and 'module'")
+        """Ensure at least one of files or modules is provided."""
+        if not self.files and not self.modules:
+            raise ValueError("Import must specify either 'files' or 'modules'")
+        if self.files and self.modules:
+            raise ValueError("Import cannot specify both 'files' and 'modules'")
         return self

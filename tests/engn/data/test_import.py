@@ -1,6 +1,4 @@
-import json
 import pytest
-from pathlib import Path
 from pydantic import ValidationError
 
 from engn.data.models import Import
@@ -15,28 +13,28 @@ class TestImportModel:
         imp = Import(files=["types.jsonl", "enums.jsonl"])
         assert imp.engn_type == "import"
         assert imp.files == ["types.jsonl", "enums.jsonl"]
-        assert imp.module is None
+        assert imp.modules is None
 
-    def test_import_with_module(self):
-        """Test valid import with module name."""
-        imp = Import(module="my_module.types")
+    def test_import_with_modules(self):
+        """Test valid import with modules list."""
+        imp = Import(modules=["my_module.types", "other_module"])
         assert imp.engn_type == "import"
         assert imp.files is None
-        assert imp.module == "my_module.types"
+        assert imp.modules == ["my_module.types", "other_module"]
 
-    def test_import_requires_files_or_module(self):
-        """Test that import must have either files or module."""
-        with pytest.raises(ValidationError, match="must specify either 'files' or 'module'"):
+    def test_import_requires_files_or_modules(self):
+        """Test that import must have either files or modules."""
+        with pytest.raises(ValidationError, match="must specify either 'files' or 'modules'"):
             Import()
 
-    def test_import_cannot_have_both_files_and_module(self):
-        """Test that import cannot have both files and module."""
-        with pytest.raises(ValidationError, match="cannot specify both 'files' and 'module'"):
-            Import(files=["types.jsonl"], module="my_module")
+    def test_import_cannot_have_both_files_and_modules(self):
+        """Test that import cannot have both files and modules."""
+        with pytest.raises(ValidationError, match="cannot specify both 'files' and 'modules'"):
+            Import(files=["types.jsonl"], modules=["my_module"])
 
     def test_import_with_empty_files_list(self):
         """Test that empty files list is invalid."""
-        with pytest.raises(ValidationError, match="must specify either 'files' or 'module'"):
+        with pytest.raises(ValidationError, match="must specify either 'files' or 'modules'"):
             Import(files=[])
 
     def test_import_json_parsing(self):
@@ -45,11 +43,11 @@ class TestImportModel:
         imp = Import.model_validate_json(json_str)
         assert imp.files == ["base.jsonl"]
 
-    def test_import_module_json_parsing(self):
-        """Test parsing module import from JSON."""
-        json_str = '{"engn_type": "import", "module": "engn.schemas.core"}'
+    def test_import_modules_json_parsing(self):
+        """Test parsing modules import from JSON."""
+        json_str = '{"engn_type": "import", "modules": ["engn.schemas.core", "engn.schemas.extra"]}'
         imp = Import.model_validate_json(json_str)
-        assert imp.module == "engn.schemas.core"
+        assert imp.modules == ["engn.schemas.core", "engn.schemas.extra"]
 
 
 class TestImportInCheck:
@@ -132,10 +130,10 @@ class TestImportInCheck:
         captured = capsys.readouterr()
         assert "All checks passed!" in captured.out
 
-    def test_check_module_import_no_action(self, tmp_path, capsys):
-        """Test that module imports don't cause errors (no action taken)."""
+    def test_check_modules_import_no_action(self, tmp_path, capsys):
+        """Test that modules imports don't cause errors (no action taken)."""
         main_file = tmp_path / "main.jsonl"
-        main_file.write_text('{"engn_type": "import", "module": "some.module"}\n')
+        main_file.write_text('{"engn_type": "import", "modules": ["some.module", "another.module"]}\n')
 
         run_check(main_file, tmp_path)
         captured = capsys.readouterr()
