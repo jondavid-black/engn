@@ -13,8 +13,3 @@ Feature: Application Context Management
     And a component is subscribed to context changes
     When I set the active project to "project-b" in the context
     Then the component should be notified of the change
-
-  Scenario: Toolbar updates context when project is selected
-    Given the SysEngn toolbar component is initialized
-    When I select project "my-project" in the toolbar dropdown
-    Then the application context active project should be "my-project"

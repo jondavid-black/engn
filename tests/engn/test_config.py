@@ -7,7 +7,6 @@ def test_load_defaults(tmp_path: Path):
     config = ProjectConfig.load(tmp_path)
     assert config.pm_path == "pm"
     assert config.sysengn_path == "arch"
-    assert config.ux_path == "ux"
 
 
 def test_load_from_file(tmp_path: Path):
@@ -17,14 +16,12 @@ def test_load_from_file(tmp_path: Path):
     [paths]
     pm = "management"
     sysengn = "architecture"
-    ux = "design"
     """
     config_file.write_text(content, encoding="utf-8")
 
     config = ProjectConfig.load(tmp_path)
     assert config.pm_path == "management"
     assert config.sysengn_path == "architecture"
-    assert config.ux_path == "design"
 
 
 def test_load_partial_config(tmp_path: Path):
@@ -39,7 +36,6 @@ def test_load_partial_config(tmp_path: Path):
     config = ProjectConfig.load(tmp_path)
     assert config.pm_path == "custom_pm"
     assert config.sysengn_path == "arch"  # default
-    assert config.ux_path == "ux"  # default
 
 
 def test_load_invalid_toml(tmp_path: Path):
@@ -51,4 +47,3 @@ def test_load_invalid_toml(tmp_path: Path):
     # Should safely return defaults instead of crashing
     assert config.pm_path == "pm"
     assert config.sysengn_path == "arch"
-    assert config.ux_path == "ux"

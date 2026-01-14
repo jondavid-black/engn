@@ -22,7 +22,6 @@ def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
     # Check if directories were created
     assert (tmp_path / "arch").is_dir()
     assert (tmp_path / "pm").is_dir()
-    assert (tmp_path / "ux").is_dir()
 
     # Check if engn.jsonl was created
     config_file = tmp_path / "engn.jsonl"

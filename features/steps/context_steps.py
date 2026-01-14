@@ -3,8 +3,7 @@
 from typing import Any, cast
 from unittest.mock import MagicMock
 from behave import given, then, when
-from engn.core.context import AppContext, get_app_context
-import flet as ft
+from engn.core.context import AppContext
 
 
 @given("a new application context is initialized")  # type: ignore
@@ -40,27 +39,3 @@ def step_subscribe_component(context):
 def step_check_notification(context):
     """Check if the component was notified."""
     assert context.listener_notified, "Component was not notified of context change"
-
-
-@when('I select project "{project_id}" in the toolbar dropdown')  # type: ignore
-def step_select_project_toolbar(context, project_id):
-    """Simulate selecting a project in the toolbar dropdown."""
-    # Find the project dropdown
-    dropdown = context.toolbar.project_dropdown
-
-    # Simulate selection
-    e = cast(Any, MagicMock(spec=ft.ControlEvent))
-    e.control = dropdown
-    e.control.value = project_id
-
-    # Trigger on_select
-    if hasattr(dropdown, "on_select") and dropdown.on_select:
-        dropdown.on_select(e)
-
-
-@then('the application context active project should be "{project_id}"')  # type: ignore
-def step_check_app_context_project(context, project_id):
-    """Check the active project in the application context."""
-    # The toolbar uses get_app_context(page)
-    app_ctx = get_app_context(context.mock_page)
-    assert app_ctx.active_project_id == project_id

@@ -20,7 +20,7 @@ def init_project_structure(target_path: Path) -> None:
         target_path.mkdir(parents=True)
 
     # Create standard engn directories
-    for dir_name in ["arch", "pm", "ux"]:
+    for dir_name in ["arch", "pm"]:
         (target_path / dir_name).mkdir(exist_ok=True)
 
     # Create engn.jsonl if it doesn't exist
@@ -37,7 +37,6 @@ def init_project_structure(target_path: Path) -> None:
                         "properties": [
                             {"name": "pm_path", "type": "str", "default": "pm"},
                             {"name": "sysengn_path", "type": "str", "default": "arch"},
-                            {"name": "ux_path", "type": "str", "default": "ux"},
                         ],
                     }
                 )
@@ -49,7 +48,6 @@ def init_project_structure(target_path: Path) -> None:
                         "engn_type": "ProjectConfig",
                         "pm_path": "pm",
                         "sysengn_path": "arch",
-                        "ux_path": "ux",
                     }
                 )
                 + "\n"

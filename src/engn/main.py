@@ -120,7 +120,7 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
         # Load config to get paths
         config = ProjectConfig.load(working_dir)
         # Check all configured paths
-        for path_str in [config.pm_path, config.sysengn_path, config.ux_path]:
+        for path_str in [config.pm_path, config.sysengn_path]:
             path = working_dir / path_str
             if path.exists():
                 files_to_check.extend(path.rglob("*.jsonl"))
@@ -421,7 +421,7 @@ def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> 
             sys.exit(1)
     else:
         config = ProjectConfig.load(working_dir)
-        for path_str in [config.pm_path, config.sysengn_path, config.ux_path]:
+        for path_str in [config.pm_path, config.sysengn_path]:
             path = working_dir / path_str
             if path.exists():
                 files_to_process.extend(path.rglob("*.jsonl"))

@@ -23,7 +23,6 @@ def test_initialize_project(tmp_path):
     assert (project_path / "engn.jsonl").exists()
     assert (project_path / "arch").exists()
     assert (project_path / "pm").exists()
-    assert (project_path / "ux").exists()
 
     projects = pm.get_all_projects()
     assert projects[0].is_initialized

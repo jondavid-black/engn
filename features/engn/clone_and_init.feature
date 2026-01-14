@@ -10,6 +10,5 @@ Feature: Project Management and Initialization
     Then a file named "engn-test/engn.jsonl" should exist
     And a directory named "engn-test/arch" should exist
     And a directory named "engn-test/pm" should exist
-    And a directory named "engn-test/ux" should exist
     When I use the ProjectManager to delete the project "engn-test"
     Then the project "engn-test" should not be listed in the project list

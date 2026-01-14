@@ -7,16 +7,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, Any
 
-# Workaround for flet 0.80.1 ImportError
-import flet.version
-
-if not hasattr(flet.version, "version"):
-    setattr(flet.version, "version", flet.version.__version__)
-
-
-from flet.auth.oauth_provider import OAuthProvider
-from flet.auth.providers import GitHubOAuthProvider, GoogleOAuthProvider
-
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
@@ -79,37 +69,6 @@ class User:
         if Role.ADMIN in self.roles:
             return True
         return False
-
-
-def get_oauth_providers() -> list[OAuthProvider]:
-    """Configures and returns the list of available OAuth providers."""
-    providers: list[OAuthProvider] = []
-
-    # Google
-    g_id = os.getenv("GOOGLE_CLIENT_ID")
-    g_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-    if g_id and g_secret:
-        providers.append(
-            GoogleOAuthProvider(
-                client_id=g_id,
-                client_secret=g_secret,
-                redirect_url="http://localhost:8550/api/oauth/redirect",
-            )
-        )
-
-    # GitHub
-    gh_id = os.getenv("GITHUB_CLIENT_ID")
-    gh_secret = os.getenv("GITHUB_CLIENT_SECRET")
-    if gh_id and gh_secret:
-        providers.append(
-            GitHubOAuthProvider(
-                client_id=gh_id,
-                client_secret=gh_secret,
-                redirect_url="http://localhost:8550/api/oauth/redirect",
-            )
-        )
-
-    return providers
 
 
 def _get_storage() -> JSONLStorage[Any]:

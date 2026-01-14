@@ -25,7 +25,6 @@ def test_create_new_project(temp_working_dir):
     assert (project_path / "engn.jsonl").exists()
     assert (project_path / "arch").exists()
     assert (project_path / "pm").exists()
-    assert (project_path / "ux").exists()
 
     # Check engn.jsonl content
     with open(project_path / "engn.jsonl", "r") as f:

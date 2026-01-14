@@ -14,7 +14,6 @@ class AuthConfig:
 class ProjectConfig:
     pm_path: str = "pm"
     sysengn_path: str = "arch"
-    ux_path: str = "ux"
     auth: AuthConfig | None = None
 
     @classmethod
@@ -34,7 +33,6 @@ class ProjectConfig:
                             return cls(
                                 pm_path=data.get("pm_path", "pm"),
                                 sysengn_path=data.get("sysengn_path", "arch"),
-                                ux_path=data.get("ux_path", "ux"),
                                 auth=AuthConfig(),  # Auth moved to workspace level
                             )
             except Exception:
@@ -64,7 +62,6 @@ class ProjectConfig:
             return cls(
                 pm_path=paths.get("pm", "pm"),
                 sysengn_path=paths.get("sysengn", "arch"),
-                ux_path=paths.get("ux", "ux"),
                 auth=auth_config,
             )
         except Exception:
