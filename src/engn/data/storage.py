@@ -122,12 +122,6 @@ class JSONLStorage(Generic[T]):
             if isinstance(m, type) and issubclass(m, BaseModel)
         ]
 
-        if not models:
-            # If we still can't build models (e.g. only enums), we might need to handle this.
-            # But for now we assume definitions lead to models.
-            self._adapter = None
-            return
-
         # Include core types in the union
         UnionType = Union[tuple(models + [TypeDef, Enumeration, Import, Module])]  # type: ignore
         self._adapter = TypeAdapter(
@@ -172,7 +166,8 @@ class JSONLStorage(Generic[T]):
         # We can use a temporary adapter for just the definition types.
         def_adapter = TypeAdapter(
             Annotated[
-                Union[TypeDef, Enumeration, Module], Field(discriminator="engn_type")
+                Union[TypeDef, Enumeration, Module, Import],
+                Field(discriminator="engn_type"),
             ]
         )
 
