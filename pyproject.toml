@@ -75,3 +75,11 @@ path = "src"
 [tool.flet.assets]
 # This points to the folder inside 'src'
 path = "engn/assets"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/engn", "src/sysengn", "src/projengn"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+]

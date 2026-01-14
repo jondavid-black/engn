@@ -1,6 +1,7 @@
 import argparse
 import getpass
 import sys
+import importlib.resources
 from pathlib import Path
 from typing import List
 
@@ -28,6 +29,36 @@ from engn.core.auth import (
     remove_role_from_user,
     get_all_roles,
 )
+
+
+def load_standard_modules() -> None:
+    """Load standard modules packaged with the application."""
+    try:
+        # standard_modules.jsonl is in engn.data.modules
+        resource_path = importlib.resources.files("engn.data.modules").joinpath(
+            "standard_modules.jsonl"
+        )
+
+        if not resource_path.is_file():
+            return
+
+        from pydantic import TypeAdapter
+
+        adapter = TypeAdapter(EngnDataModel)
+
+        with resource_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    # This will automatically register modules via model_post_init
+                    adapter.validate_json(line)
+                except Exception:
+                    pass
+    except Exception:
+        # Silently fail if resources cannot be loaded
+        pass
 
 
 def prompt_for_password() -> str:
@@ -613,6 +644,9 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+
+    # Load standard modules before processing commands
+    load_standard_modules()
 
     if args.version:
         print(get_version())
