@@ -164,46 +164,102 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                         continue
 
                     try:
-                        item = adapter.validate_json(line)
-                        parsed_items.append((file_path, line_num, item))
+                        import json
 
-                        # Handle imports - add imported files to the queue
-                        if isinstance(item, Import):
-                            files_to_import = []
-                            if item.files:
-                                files_to_import.extend(item.files)
-                            if item.modules:
-                                from engn.data.models import _MODULE_REGISTRY
+                        # Peek at the engn_type to see if it's a core definition
+                        try:
+                            data = json.loads(line)
+                        except json.JSONDecodeError as e:
+                            # Actually report JSON errors immediately
+                            errors.append(
+                                (file_path, line_num, f"JSON decode error: {e}")
+                            )
+                            continue
 
-                                for module_name in item.modules:
-                                    if module_name in _MODULE_REGISTRY:
-                                        files_to_import.extend(
-                                            _MODULE_REGISTRY[module_name].files
-                                        )
-                                    else:
-                                        errors.append(
-                                            (
-                                                file_path,
-                                                line_num,
-                                                f"Module not found: {module_name}",
+                        engn_type = data.get("engn_type")
+                        is_core_definition = engn_type in (
+                            "type_def",
+                            "enum",
+                            "import",
+                            "module",
+                        )
+
+                        if is_core_definition:
+                            item = adapter.validate_json(line)
+                            parsed_items.append((file_path, line_num, item))
+
+                            # Handle imports - add imported files to the queue
+                            if isinstance(item, Import):
+                                if item.files:
+                                    for import_file in item.files:
+                                        import_path = Path(import_file)
+                                        if not import_path.is_absolute():
+                                            import_path = file_path.parent / import_path
+                                        if import_path.exists():
+                                            files_queue.append(import_path)
+                                        else:
+                                            errors.append(
+                                                (
+                                                    file_path,
+                                                    line_num,
+                                                    f"Imported file not found: {import_file}",
+                                                )
                                             )
-                                        )
+                                if item.modules:
+                                    from engn.data.models import _MODULE_REGISTRY
 
-                            for import_file in files_to_import:
-                                import_path = Path(import_file)
-                                # Resolve relative paths from the importing file's directory
-                                if not import_path.is_absolute():
-                                    import_path = file_path.parent / import_path
-                                if import_path.exists():
-                                    files_queue.append(import_path)
-                                else:
-                                    errors.append(
-                                        (
-                                            file_path,
-                                            line_num,
-                                            f"Imported file not found: {import_file}",
-                                        )
-                                    )
+                                    for module_name in item.modules:
+                                        if module_name in _MODULE_REGISTRY:
+                                            module = _MODULE_REGISTRY[module_name]
+                                            for import_file in module.files:
+                                                import_path = Path(import_file)
+                                                if not import_path.is_absolute():
+                                                    # Try relative to current file
+                                                    local_path = (
+                                                        file_path.parent / import_path
+                                                    )
+                                                    if local_path.exists():
+                                                        files_queue.append(local_path)
+                                                        continue
+                                                    # Try as standard module resource
+                                                    try:
+                                                        resource_path = (
+                                                            importlib.resources.files(
+                                                                "engn.data.modules"
+                                                            ).joinpath(import_file)
+                                                        )
+                                                        # Traversable has is_file()
+                                                        if resource_path.is_file():
+                                                            # Convert to Path for storage
+                                                            files_queue.append(
+                                                                Path(str(resource_path))
+                                                            )
+                                                            continue
+                                                    except Exception:
+                                                        pass
+
+                                                if import_path.exists():
+                                                    files_queue.append(import_path)
+                                                else:
+                                                    errors.append(
+                                                        (
+                                                            file_path,
+                                                            line_num,
+                                                            f"Module file not found: {import_file}",
+                                                        )
+                                                    )
+                                        else:
+                                            errors.append(
+                                                (
+                                                    file_path,
+                                                    line_num,
+                                                    f"Module not found: {module_name}",
+                                                )
+                                            )
+                        else:
+                            # Not a core definition, might be a data instance.
+                            # We ignore it in this pass and will validate in second pass.
+                            pass
                     except ValidationError as e:
                         msg = str(e).replace("\n", " ")
                         errors.append((file_path, line_num, msg))
@@ -226,7 +282,43 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
 
                 traceback.print_exc()
 
-    # 3. Post-validation: check type references
+    # 3. Second pass: Validate all lines (definitions AND data instances)
+    # Filter out Import items - they're directives, not type definitions
+    type_definitions = [
+        d for _, _, d in parsed_items if isinstance(d, (TypeDef, Enumeration, Module))
+    ]
+
+    from engn.data.storage import JSONLStorage
+
+    # Process all files again for full validation
+    # We use all discovered files (original targets + all resolved imports)
+    all_files = list(processed_files)
+    for file_path in all_files:
+        # Skip second pass if we already found errors in the first pass
+        if any(e[0] == file_path for e in errors):
+            continue
+
+        try:
+            storage = JSONLStorage(file_path, type_definitions)
+            # JSONLStorage.read() will validate everything and check references
+            storage.read()
+        except ValidationError as e:
+            # We need to map the error back to line numbers.
+            # Since JSONLStorage.read() fails on the first error it can't handle,
+            # or it might have a list of errors.
+            # Actually JSONLStorage.read() currently fails fast on first data instance error.
+            # Let's just catch it and report it.
+            # To get line numbers, we'd need to re-parse.
+            # For now, let's just report the error for the file.
+            msg = str(e).replace("\n", " ")
+            errors.append((file_path, 0, msg))
+        except ValueError as e:
+            # Reference errors
+            errors.append((file_path, 0, str(e)))
+        except Exception as e:
+            errors.append((file_path, 0, str(e)))
+
+    # 4. Post-validation: check type references (for definitions)
     defined_types = set()
     for _, _, item in parsed_items:
         if isinstance(item, TypeDef):
@@ -386,9 +478,29 @@ def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                                         for import_file in module.files:
                                             import_path = Path(import_file)
                                             if not import_path.is_absolute():
-                                                import_path = (
+                                                # Try relative to current file
+                                                local_path = (
                                                     file_path.parent / import_path
                                                 )
+                                                if local_path.exists():
+                                                    files_queue.append(local_path)
+                                                    continue
+                                                # Try as standard module resource
+                                                try:
+                                                    resource_path = (
+                                                        importlib.resources.files(
+                                                            "engn.data.modules"
+                                                        ).joinpath(import_file)
+                                                    )
+                                                    if resource_path.is_file():
+                                                        # Convert to Path for storage
+                                                        files_queue.append(
+                                                            Path(str(resource_path))
+                                                        )
+                                                        continue
+                                                except Exception:
+                                                    pass
+
                                             if import_path.exists():
                                                 files_queue.append(import_path)
                     except Exception:

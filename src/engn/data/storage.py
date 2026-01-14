@@ -76,7 +76,8 @@ class JSONLStorage(Generic[T]):
 
             # 3. Create a discriminated union
             #    The 'engn_type' field in each dynamic model acts as the discriminator.
-            UnionType = Union[tuple(models)]  # type: ignore
+            #    We also include the core meta-model types in the union to support mixed files.
+            UnionType = Union[tuple(models + [TypeDef, Enumeration, Import, Module])]  # type: ignore
             self._adapter = TypeAdapter(
                 Annotated[UnionType, Field(discriminator="engn_type")]
             )
@@ -127,7 +128,8 @@ class JSONLStorage(Generic[T]):
             self._adapter = None
             return
 
-        UnionType = Union[tuple(models)]  # type: ignore
+        # Include core types in the union
+        UnionType = Union[tuple(models + [TypeDef, Enumeration, Import, Module])]  # type: ignore
         self._adapter = TypeAdapter(
             Annotated[UnionType, Field(discriminator="engn_type")]
         )
@@ -195,18 +197,15 @@ class JSONLStorage(Generic[T]):
             self._rebuild_adapter(definitions)
 
         if self._adapter is None:
-            # If we still have no adapter, we can only return the definitions we found
-            # (if T allows it) or raise error if we have data items we can't parse.
-            # If T is bound to BaseModel, returning definitions (which are BaseModels) is fine.
-            # But we can't parse the unknown data items.
+            # If we still have no adapter, we can only return the definitions we found.
+            # If there are unknown data items, we should fail validation.
             parsed_items = []
             for line, parsed_def in raw_items:
                 if parsed_def:
                     parsed_items.append(parsed_def)
                 else:
-                    # Warn or fail?
-                    # For now, let's skip unknown items if we can't build a model for them.
-                    pass
+                    # Trigger validation error for unknown data items
+                    def_adapter.validate_json(line)
             return parsed_items
 
         # 3. Second pass: Parse everything with the full adapter

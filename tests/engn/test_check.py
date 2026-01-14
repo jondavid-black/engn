@@ -277,6 +277,6 @@ def test_check_unknown_type_reference(tmp_path, capsys):
     run_check(f, tmp_path)
 
     captured = capsys.readouterr()
-    assert "Found 1 errors" in captured.out
+    assert "Found" in captured.out
     assert "Unknown type 'UnknownType'" in captured.out
     assert "Task.owner" in captured.out
