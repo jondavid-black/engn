@@ -211,3 +211,6 @@ __marimo__/
 # engn managed project directories
 test_workdir/
 # end engn managed
+
+codeql-results.csv
+codeql-db
