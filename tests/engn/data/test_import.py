@@ -24,17 +24,23 @@ class TestImportModel:
 
     def test_import_requires_files_or_modules(self):
         """Test that import must have either files or modules."""
-        with pytest.raises(ValidationError, match="must specify either 'files' or 'modules'"):
+        with pytest.raises(
+            ValidationError, match="must specify either 'files' or 'modules'"
+        ):
             Import()
 
     def test_import_cannot_have_both_files_and_modules(self):
         """Test that import cannot have both files and modules."""
-        with pytest.raises(ValidationError, match="cannot specify both 'files' and 'modules'"):
+        with pytest.raises(
+            ValidationError, match="cannot specify both 'files' and 'modules'"
+        ):
             Import(files=["types.jsonl"], modules=["my_module"])
 
     def test_import_with_empty_files_list(self):
         """Test that empty files list is invalid."""
-        with pytest.raises(ValidationError, match="must specify either 'files' or 'modules'"):
+        with pytest.raises(
+            ValidationError, match="must specify either 'files' or 'modules'"
+        ):
             Import(files=[])
 
     def test_import_json_parsing(self):
@@ -57,7 +63,9 @@ class TestImportInCheck:
         """Test that imported files are included in check."""
         # Create base types file
         base_file = tmp_path / "base.jsonl"
-        base_file.write_text('{"engn_type": "enum", "name": "Status", "values": ["open", "closed"]}\n')
+        base_file.write_text(
+            '{"engn_type": "enum", "name": "Status", "values": ["open", "closed"]}\n'
+        )
 
         # Create main file that imports base
         main_file = tmp_path / "main.jsonl"
@@ -85,7 +93,9 @@ class TestImportInCheck:
     def test_check_missing_imported_file(self, tmp_path, capsys):
         """Test error when imported file doesn't exist."""
         main_file = tmp_path / "main.jsonl"
-        main_file.write_text('{"engn_type": "import", "files": ["nonexistent.jsonl"]}\n')
+        main_file.write_text(
+            '{"engn_type": "import", "files": ["nonexistent.jsonl"]}\n'
+        )
 
         run_check(main_file, tmp_path)
         captured = capsys.readouterr()
@@ -117,7 +127,9 @@ class TestImportInCheck:
         subdir = tmp_path / "types"
         subdir.mkdir()
         base_file = subdir / "base.jsonl"
-        base_file.write_text('{"engn_type": "enum", "name": "Priority", "values": ["low", "high"]}\n')
+        base_file.write_text(
+            '{"engn_type": "enum", "name": "Priority", "values": ["low", "high"]}\n'
+        )
 
         # Create main file in parent dir that imports from subdir
         main_file = tmp_path / "main.jsonl"
@@ -130,10 +142,19 @@ class TestImportInCheck:
         captured = capsys.readouterr()
         assert "All checks passed!" in captured.out
 
-    def test_check_modules_import_no_action(self, tmp_path, capsys):
-        """Test that modules imports don't cause errors (no action taken)."""
+    def test_check_modules_import_valid(self, tmp_path, capsys):
+        """Test that modules imports work when modules are defined."""
+        # Create a file for the module
+        base_file = tmp_path / "base.jsonl"
+        base_file.write_text(
+            '{"engn_type": "enum", "name": "Color", "values": ["red", "blue"]}\n'
+        )
+
         main_file = tmp_path / "main.jsonl"
-        main_file.write_text('{"engn_type": "import", "modules": ["some.module", "another.module"]}\n')
+        main_file.write_text(
+            '{"engn_type": "module", "name": "some.module", "files": ["base.jsonl"]}\n'
+            '{"engn_type": "import", "modules": ["some.module"]}\n'
+        )
 
         run_check(main_file, tmp_path)
         captured = capsys.readouterr()
@@ -147,7 +168,9 @@ class TestImportInPrint:
         """Test that print command processes imported files."""
         # Create base types file
         base_file = tmp_path / "base.jsonl"
-        base_file.write_text('{"engn_type": "enum", "name": "Status", "values": ["open", "closed"]}\n')
+        base_file.write_text(
+            '{"engn_type": "enum", "name": "Status", "values": ["open", "closed"]}\n'
+        )
 
         # Create import file (separate from type definitions)
         import_file = tmp_path / "imports.jsonl"
@@ -155,7 +178,9 @@ class TestImportInPrint:
 
         # Create types file with TypeDef
         types_file = tmp_path / "types.jsonl"
-        types_file.write_text('{"engn_type": "type_def", "name": "Task", "properties": [{"name": "status", "type": "Status"}]}\n')
+        types_file.write_text(
+            '{"engn_type": "type_def", "name": "Task", "properties": [{"name": "status", "type": "Status"}]}\n'
+        )
 
         # Process the imports file first (which will pull in base.jsonl)
         # Then process the types file
@@ -169,7 +194,9 @@ class TestImportInPrint:
         """Test that types from imported files are available for resolution."""
         # Create base types file with enum
         base_file = tmp_path / "base.jsonl"
-        base_file.write_text('{"engn_type": "enum", "name": "Priority", "values": ["low", "medium", "high"]}\n')
+        base_file.write_text(
+            '{"engn_type": "enum", "name": "Priority", "values": ["low", "medium", "high"]}\n'
+        )
 
         # Create import file
         import_file = tmp_path / "imports.jsonl"
@@ -177,7 +204,9 @@ class TestImportInPrint:
 
         # Create types file that uses imported type
         types_file = tmp_path / "types.jsonl"
-        types_file.write_text('{"engn_type": "type_def", "name": "Task", "properties": [{"name": "priority", "type": "Priority"}]}\n')
+        types_file.write_text(
+            '{"engn_type": "type_def", "name": "Task", "properties": [{"name": "priority", "type": "Priority"}]}\n'
+        )
 
         run_print(tmp_path, tmp_path)
         captured = capsys.readouterr()
@@ -190,7 +219,9 @@ class TestImportInPrint:
         """Test that chained imports (A imports B, B imports C) work."""
         # Create base file
         file_c = tmp_path / "c.jsonl"
-        file_c.write_text('{"engn_type": "enum", "name": "Level", "values": ["1", "2", "3"]}\n')
+        file_c.write_text(
+            '{"engn_type": "enum", "name": "Level", "values": ["1", "2", "3"]}\n'
+        )
 
         # Create intermediate file that imports base (only import directive)
         file_b = tmp_path / "b.jsonl"
@@ -198,7 +229,9 @@ class TestImportInPrint:
 
         # Create another file with enum
         file_d = tmp_path / "d.jsonl"
-        file_d.write_text('{"engn_type": "enum", "name": "Category", "values": ["a", "b"]}\n')
+        file_d.write_text(
+            '{"engn_type": "enum", "name": "Category", "values": ["a", "b"]}\n'
+        )
 
         # Create main file that imports intermediate
         file_a = tmp_path / "a.jsonl"

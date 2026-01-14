@@ -1,9 +1,9 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union, Sequence
 
 from pydantic import BaseModel, Field, create_model
 
-from engn.data.models import Enumeration, TypeDef
+from engn.data.models import Enumeration, TypeDef, Module
 from engn.data.primitives import PRIMITIVE_TYPE_MAP
 
 
@@ -92,7 +92,7 @@ def _resolve_type(
 
 
 def gen_pydantic_models(
-    definitions: List[Union[TypeDef, Enumeration]],
+    definitions: Sequence[Union[TypeDef, Enumeration, Module]],
 ) -> Dict[str, Type[BaseModel]]:
     """
     Dynamically generate Pydantic model classes from a list of TypeDef and Enumeration instances.

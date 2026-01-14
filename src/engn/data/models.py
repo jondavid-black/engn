@@ -6,6 +6,7 @@ from engn.data.primitives import PRIMITIVE_TYPE_MAP
 
 # Global registry to store defined types and enumerations for validation
 _MODEL_REGISTRY: Dict[str, Any] = {}
+_MODULE_REGISTRY: Dict[str, Any] = {}
 
 
 def get_referenced_types(v: str) -> Set[str]:
@@ -81,6 +82,22 @@ class BaseDataModel(BaseModel):
     """Base model for all data engine models."""
 
     model_config = {"extra": "forbid"}
+
+
+class Module(BaseDataModel):
+    """
+    Defines a module which is a named collection of JSONL files for reuse.
+    """
+
+    engn_type: Literal["module"] = "module"
+    name: str = Field(description="Unique name of the module")
+    description: str | None = Field(
+        default=None, description="Description of the module"
+    )
+    files: list[str] = Field(description="List of JSONL file paths in this module")
+
+    def model_post_init(self, __context: Any) -> None:
+        _MODULE_REGISTRY[self.name] = self
 
 
 class Enumeration(BaseDataModel):
@@ -295,7 +312,7 @@ class TypeDef(BaseDataModel):
 
 class Schema(BaseDataModel):
     """
-    Defines a complete data schema consisting of multiple types and enumerations.
+    Defines a complete data schema consisting of multiple types, enumerations, and modules.
     """
 
     types: list[TypeDef] = Field(
@@ -303,6 +320,9 @@ class Schema(BaseDataModel):
     )
     enums: list[Enumeration] = Field(
         default_factory=list, description="List of enumeration definitions"
+    )
+    modules: list[Module] = Field(
+        default_factory=list, description="List of module definitions"
     )
 
     @model_validator(mode="after")
@@ -325,10 +345,10 @@ class Schema(BaseDataModel):
 
 class Import(BaseDataModel):
     """
-    Defines an import directive to include other JSONL files or modules.
+    Defines an import directive to include other JSONL files or named modules.
 
     Use files to include additional JSONL files in processing.
-    Use modules to reference Python modules (no action taken currently).
+    Use modules to reference named modules defined with the 'module' type.
     """
 
     engn_type: Literal["import"] = "import"
@@ -336,7 +356,7 @@ class Import(BaseDataModel):
         default=None, description="List of file paths to include in processing"
     )
     modules: list[str] | None = Field(
-        default=None, description="List of Python module names to import (reserved for future use)"
+        default=None, description="List of module names to import"
     )
 
     @model_validator(mode="after")

@@ -3,11 +3,13 @@ from typing import Generic, Type, TypeVar, List, Union, Annotated, Sequence
 
 from pydantic import BaseModel, TypeAdapter, Field
 
-from engn.data.models import TypeDef, Enumeration, Import
+from engn.data.models import TypeDef, Enumeration, Import, Module
 from engn.data.dynamic import gen_pydantic_models
 
 # Define the discriminated union of supported types
-EngnDataModel = Annotated[Union[TypeDef, Enumeration, Import], Field(discriminator="engn_type")]
+EngnDataModel = Annotated[
+    Union[TypeDef, Enumeration, Import, Module], Field(discriminator="engn_type")
+]
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -20,7 +22,9 @@ class JSONLStorage(Generic[T]):
     def __init__(
         self,
         file_path: Path,
-        model_type: Type[T] | TypeAdapter[T] | Sequence[Union[TypeDef, Enumeration]],
+        model_type: Type[T]
+        | TypeAdapter[T]
+        | Sequence[Union[TypeDef, Enumeration, Module]],
     ):
         """
         Initialize the storage engine.
@@ -104,11 +108,13 @@ class JSONLStorage(Generic[T]):
                     # Or simple model dump
                     f.write(item.model_dump_json() + "\n")
 
-    def _rebuild_adapter(self, definitions: List[Union[TypeDef, Enumeration]]) -> None:
+    def _rebuild_adapter(
+        self, definitions: Sequence[Union[TypeDef, Enumeration, Module]]
+    ) -> None:
         """
         Rebuilds the TypeAdapter with new definitions.
         """
-        registry = gen_pydantic_models(definitions)
+        registry = gen_pydantic_models(list(definitions))
         models = [
             m
             for m in registry.values()
@@ -163,7 +169,9 @@ class JSONLStorage(Generic[T]):
         # We need to identify definitions.
         # We can use a temporary adapter for just the definition types.
         def_adapter = TypeAdapter(
-            Annotated[Union[TypeDef, Enumeration], Field(discriminator="engn_type")]
+            Annotated[
+                Union[TypeDef, Enumeration, Module], Field(discriminator="engn_type")
+            ]
         )
 
         for line in lines:

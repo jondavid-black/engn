@@ -1,0 +1,6 @@
+{"engn_type": "enum", "name": "InvalidEnum", "values": ["A", "B"]}
+{"engn_type": "type_def", "name": "InvalidTypeDef", "properties": [{"name": "p", "type": "UnknownType"}]}
+{"engn_type": "InvalidType", "data": 1}
+{"engn_type": "enum"}
+{"engn_type": "type_def", "properties": "not_a_list"}
+this is not json at all

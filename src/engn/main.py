@@ -9,7 +9,14 @@ from pydantic import ValidationError
 from engn.utils import get_version
 from engn.config import ProjectConfig
 from engn.data.storage import EngnDataModel
-from engn.data.models import TypeDef, Enumeration, Import, get_referenced_types, get_structural_dependencies
+from engn.data.models import (
+    TypeDef,
+    Enumeration,
+    Import,
+    Module,
+    get_referenced_types,
+    get_structural_dependencies,
+)
 from engn import project
 from engn.core.auth import (
     Role,
@@ -130,8 +137,28 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                         parsed_items.append((file_path, line_num, item))
 
                         # Handle imports - add imported files to the queue
-                        if isinstance(item, Import) and item.files:
-                            for import_file in item.files:
+                        if isinstance(item, Import):
+                            files_to_import = []
+                            if item.files:
+                                files_to_import.extend(item.files)
+                            if item.modules:
+                                from engn.data.models import _MODULE_REGISTRY
+
+                                for module_name in item.modules:
+                                    if module_name in _MODULE_REGISTRY:
+                                        files_to_import.extend(
+                                            _MODULE_REGISTRY[module_name].files
+                                        )
+                                    else:
+                                        errors.append(
+                                            (
+                                                file_path,
+                                                line_num,
+                                                f"Module not found: {module_name}",
+                                            )
+                                        )
+
+                            for import_file in files_to_import:
                                 import_path = Path(import_file)
                                 # Resolve relative paths from the importing file's directory
                                 if not import_path.is_absolute():
@@ -139,11 +166,13 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                                 if import_path.exists():
                                     files_queue.append(import_path)
                                 else:
-                                    errors.append((
-                                        file_path,
-                                        line_num,
-                                        f"Imported file not found: {import_file}"
-                                    ))
+                                    errors.append(
+                                        (
+                                            file_path,
+                                            line_num,
+                                            f"Imported file not found: {import_file}",
+                                        )
+                                    )
                     except ValidationError as e:
                         msg = str(e).replace("\n", " ")
                         errors.append((file_path, line_num, msg))
@@ -180,11 +209,13 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                 referenced = get_referenced_types(prop.type)
                 for ref_type in referenced:
                     if ref_type not in defined_types:
-                        errors.append((
-                            file_path,
-                            line_num,
-                            f"Unknown type '{ref_type}' referenced in property '{item.name}.{prop.name}'"
-                        ))
+                        errors.append(
+                            (
+                                file_path,
+                                line_num,
+                                f"Unknown type '{ref_type}' referenced in property '{item.name}.{prop.name}'",
+                            )
+                        )
 
     # 4. Check for circular dependencies using structural dependencies
     # Build dependency graph: type_name -> set of types it depends on structurally
@@ -199,7 +230,9 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                 structural_deps = get_structural_dependencies(prop.type)
                 # Only include dependencies on other TypeDefs (not enums)
                 for dep in structural_deps:
-                    if dep in defined_types and dep not in {e.name for _, _, e in parsed_items if isinstance(e, Enumeration)}:
+                    if dep in defined_types and dep not in {
+                        e.name for _, _, e in parsed_items if isinstance(e, Enumeration)
+                    }:
                         deps.add(dep)
             dependency_graph[item.name] = deps
 
@@ -226,13 +259,13 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
             if cycle:
                 # Report error for the first type in the cycle
                 first_type = cycle[0]
-                file_path, line_num = type_to_location.get(first_type, (Path("unknown"), 0))
+                file_path, line_num = type_to_location.get(
+                    first_type, (Path("unknown"), 0)
+                )
                 cycle_str = " -> ".join(cycle)
-                errors.append((
-                    file_path,
-                    line_num,
-                    f"Circular dependency detected: {cycle_str}"
-                ))
+                errors.append(
+                    (file_path, line_num, f"Circular dependency detected: {cycle_str}")
+                )
                 break  # Report only one cycle error to avoid duplicates
 
     # 5. Report results
@@ -305,14 +338,29 @@ def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                         all_definitions.append(item)
 
                         # Handle imports - add imported files to the queue
-                        if isinstance(item, Import) and item.files:
-                            for import_file in item.files:
-                                import_path = Path(import_file)
-                                if not import_path.is_absolute():
-                                    import_path = file_path.parent / import_path
-                                if import_path.exists():
-                                    files_queue.append(import_path)
-                    except:
+                        if isinstance(item, Import):
+                            if item.files:
+                                for import_file in item.files:
+                                    import_path = Path(import_file)
+                                    if not import_path.is_absolute():
+                                        import_path = file_path.parent / import_path
+                                    if import_path.exists():
+                                        files_queue.append(import_path)
+                            if item.modules:
+                                from engn.data.models import _MODULE_REGISTRY
+
+                                for module_name in item.modules:
+                                    if module_name in _MODULE_REGISTRY:
+                                        module = _MODULE_REGISTRY[module_name]
+                                        for import_file in module.files:
+                                            import_path = Path(import_file)
+                                            if not import_path.is_absolute():
+                                                import_path = (
+                                                    file_path.parent / import_path
+                                                )
+                                            if import_path.exists():
+                                                files_queue.append(import_path)
+                    except Exception:
                         pass  # Not a definition
         except Exception as e:
             if verbose:
@@ -361,12 +409,17 @@ def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                             else ""
                         )
                         print(f"    - {prop.name}: {prop.type} ({presence}{default})")
+                elif isinstance(item, Module):
+                    print(f"\n[Module] {item.name}")
+                    if item.description:
+                        print(f"  Description: {item.description}")
+                    print(f"  Files: {', '.join(item.files)}")
                 elif isinstance(item, Import):
-                    print(f"\n[Import]")
+                    print("\n[Import]")
                     if item.files:
                         print(f"  Files: {', '.join(item.files)}")
-                    if item.module:
-                        print(f"  Module: {item.module}")
+                    if item.modules:
+                        print(f"  Modules: {', '.join(item.modules)}")
                 else:
                     # Data instance
                     print(f"\n[{item.__class__.__name__}]")

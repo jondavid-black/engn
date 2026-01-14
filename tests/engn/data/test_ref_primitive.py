@@ -79,6 +79,7 @@ def test_ref_parsing_missing_target_type_falls_back_to_str():
 
     # The field type is str (fallback when target type not found)
     from typing import Optional
+
     MissingType = pydantic_models["MissingType"]
     assert MissingType.model_fields["bad"].annotation == Optional[str]
 

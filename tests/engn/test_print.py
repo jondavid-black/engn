@@ -58,7 +58,12 @@ def test_print_type_def(tmp_path, capsys):
             "description": "A task item",
             "properties": [
                 {"name": "title", "type": "str", "presence": "required"},
-                {"name": "priority", "type": "Priority", "presence": "optional", "default": "medium"},
+                {
+                    "name": "priority",
+                    "type": "Priority",
+                    "presence": "optional",
+                    "default": "medium",
+                },
             ],
         },
     ]
@@ -168,4 +173,6 @@ def test_print_enum_without_description(tmp_path, capsys):
         elif enum_section and line.startswith("["):
             break
         elif enum_section and "Description:" in line:
-            assert False, "Should not have Description line for enum without description"
+            assert False, (
+                "Should not have Description line for enum without description"
+            )
