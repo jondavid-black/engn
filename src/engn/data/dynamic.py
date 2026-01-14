@@ -53,27 +53,27 @@ def _resolve_type(
 
         return Dict[key_type, val_type]  # type: ignore
 
-    # Handle ref[T] - look up Type.Prop
+    # Handle ref[T] - look up Type.Prop for the type, but don't block if unavailable
     if type_name.startswith("ref[") and type_name.endswith("]"):
         target = type_name[4:-1]
         parts = target.split(".")
         if len(parts) != 2:
-            return None  # Should have been caught by model validation, but failsafe
+            # Invalid format - return str as fallback (schema validation should catch this)
+            return str
 
         target_type_name, target_prop_name = parts
 
         # Check registry for the target type
         target_model = registry.get(target_type_name)
         if target_model is None:
-            # If not found, we return None so the dependency resolution loop
-            # in gen_pydantic_models knows we are still waiting for this type.
-            return None
+            # Target type not yet available - return str to avoid circular dependency.
+            # The ref will still work since refs are just identifier values.
+            return str
 
         # Check if the property exists on the target model
         if target_prop_name not in target_model.model_fields:
-            raise ValueError(
-                f"Property '{target_prop_name}' not found in type '{target_type_name}'"
-            )
+            # Property not found - return str as fallback
+            return str
 
         target_field = target_model.model_fields[target_prop_name]
         return target_field.annotation

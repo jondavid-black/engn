@@ -69,7 +69,7 @@ def test_check_invalid_json(tmp_path, capsys):
 
     captured = capsys.readouterr()
     assert "Found 1 errors" in captured.out
-    assert "bad.jsonl:1:" in captured.out
+    assert "bad.jsonl at line 1:" in captured.out
     assert (
         "JSON decode error" in captured.out
         or "Expecting property name" in captured.out
@@ -175,3 +175,105 @@ def test_check_target_not_found(tmp_path, capsys):
     assert e.value.code == 1
     captured = capsys.readouterr()
     assert f"Error: Target '{target}' not found." in captured.out
+
+
+def test_check_error_messages_not_truncated(tmp_path, capsys):
+    """Test that error messages are not truncated."""
+    f = tmp_path / "data.jsonl"
+
+    # Create a type with many missing required fields to generate a long error
+    invalid_item = {
+        "engn_type": "type_def",
+        "properties": [
+            {"name": "prop1"},  # missing 'type'
+            {"name": "prop2"},  # missing 'type'
+            {"name": "prop3"},  # missing 'type'
+        ],
+    }
+    write_jsonl(f, [invalid_item])
+
+    run_check(f, tmp_path)
+
+    captured = capsys.readouterr()
+    assert "Found" in captured.out
+
+    # The Pydantic error URL should appear in full (not truncated)
+    # This URL is typically at the end of error messages
+    assert "https://errors.pydantic.dev/" in captured.out
+
+    # Error message should not end with "..." (truncation indicator)
+    # Split by newlines and check each error line
+    error_lines = [line for line in captured.out.split("\n") if "ERROR" in line]
+    for line in error_lines:
+        assert not line.rstrip().endswith("...")
+
+
+def test_check_errors_sorted_by_file_and_line(tmp_path, capsys):
+    """Test that errors are sorted by file name, then line number."""
+    # Create files that will have errors at various lines
+    # Use names that sort in a specific order: aaa.jsonl < bbb.jsonl
+    d = tmp_path / "pm"
+    d.mkdir()
+
+    # File bbb.jsonl - errors at lines 1 and 3
+    write_jsonl(
+        d / "bbb.jsonl",
+        [
+            {"engn_type": "enum"},  # line 1: missing name and values
+            {"engn_type": "enum", "name": "Valid", "values": ["x"]},  # line 2: valid
+            {"engn_type": "type_def"},  # line 3: missing name
+        ],
+    )
+
+    # File aaa.jsonl - errors at lines 2 and 4
+    write_jsonl(
+        d / "aaa.jsonl",
+        [
+            {"engn_type": "enum", "name": "E1", "values": ["a"]},  # line 1: valid
+            {"engn_type": "enum"},  # line 2: missing name and values
+            {"engn_type": "enum", "name": "E2", "values": ["b"]},  # line 3: valid
+            {"engn_type": "type_def"},  # line 4: missing name
+        ],
+    )
+
+    run_check(None, tmp_path)
+
+    captured = capsys.readouterr()
+    assert "Found 4 errors" in captured.out
+
+    # Extract error lines and their positions in output
+    lines = captured.out.split("\n")
+    error_lines = [line for line in lines if "ERROR" in line]
+
+    assert len(error_lines) == 4
+
+    # Errors should be sorted: aaa.jsonl (line 2, line 4), then bbb.jsonl (line 1, line 3)
+    assert "aaa.jsonl at line 2:" in error_lines[0]
+    assert "aaa.jsonl at line 4:" in error_lines[1]
+    assert "bbb.jsonl at line 1:" in error_lines[2]
+    assert "bbb.jsonl at line 3:" in error_lines[3]
+
+
+def test_check_unknown_type_reference(tmp_path, capsys):
+    """Test that unknown type references are caught and reported."""
+    f = tmp_path / "data.jsonl"
+
+    items = [
+        {"engn_type": "enum", "name": "Status", "values": ["open", "closed"]},
+        {
+            "engn_type": "type_def",
+            "name": "Task",
+            "properties": [
+                {"name": "status", "type": "Status"},  # valid reference
+                {"name": "owner", "type": "UnknownType"},  # invalid reference
+            ],
+        },
+    ]
+    write_jsonl(f, items)
+
+    run_check(f, tmp_path)
+
+    captured = capsys.readouterr()
+    assert "Found 1 errors" in captured.out
+    assert "Unknown type 'UnknownType'" in captured.out
+    assert "Task.owner" in captured.out

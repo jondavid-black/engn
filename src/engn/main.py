@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from engn.utils import get_version
 from engn.config import ProjectConfig
 from engn.data.storage import EngnDataModel
+from engn.data.models import TypeDef, Enumeration, Import, get_referenced_types, get_structural_dependencies
 from engn import project
 from engn.core.auth import (
     Role,
@@ -90,25 +91,30 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
         print("No JSONL files found to check.")
         return
 
-    # 2. Process files
-    errors: List[str] = []
-
-    # Initialize storage with our union type
-    # We use a dummy path since we'll set it per file or use a helper
-    # Actually, JSONLStorage takes a specific file path.
-    # But we can instantiate it for each file.
+    # 2. Process files (with import resolution)
+    # Store errors as (file_path, line_num, message) for sorting
+    errors: List[tuple[Path, int, str]] = []
+    # Track parsed items for post-validation of type references
+    parsed_items: List[tuple[Path, int, TypeDef | Enumeration | Import]] = []
+    # Track processed files to avoid infinite loops from circular imports
+    processed_files: set[Path] = set()
 
     # Create a TypeAdapter once for reuse since the model type is constant
     from pydantic import TypeAdapter
 
     adapter = TypeAdapter(EngnDataModel)
 
-    for file_path in files_to_check:
-        # Create storage instance for this file
-        # We don't actually need the full storage engine instance here since we are doing custom
-        # line-by-line validation to get line numbers, which the storage engine abstraction hides.
-        # But if we wanted to reuse logic, we'd have to enhance storage engine or duplicate it.
-        # Duplicating the read loop here is safer for the specific requirement of line reporting.
+    # Use a queue to process files, allowing imports to add more files
+    files_queue = list(files_to_check)
+
+    while files_queue:
+        file_path = files_queue.pop(0)
+
+        # Skip if already processed (handles circular imports)
+        resolved_path = file_path.resolve()
+        if resolved_path in processed_files:
+            continue
+        processed_files.add(resolved_path)
 
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -120,41 +126,127 @@ def run_check(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                         continue
 
                     try:
-                        adapter.validate_json(line)
-                    except ValidationError as e:
-                        # Format error message
-                        # Pydantic errors can be complex, let's just get the first error or summary
-                        msg = str(e).replace("\n", " ")
-                        # Truncate if too long?
-                        if len(msg) > 200:
-                            msg = msg[:197] + "..."
+                        item = adapter.validate_json(line)
+                        parsed_items.append((file_path, line_num, item))
 
-                        errors.append(f"ERROR: {file_path} at line {line_num} - {msg}")
+                        # Handle imports - add imported files to the queue
+                        if isinstance(item, Import) and item.files:
+                            for import_file in item.files:
+                                import_path = Path(import_file)
+                                # Resolve relative paths from the importing file's directory
+                                if not import_path.is_absolute():
+                                    import_path = file_path.parent / import_path
+                                if import_path.exists():
+                                    files_queue.append(import_path)
+                                else:
+                                    errors.append((
+                                        file_path,
+                                        line_num,
+                                        f"Imported file not found: {import_file}"
+                                    ))
+                    except ValidationError as e:
+                        msg = str(e).replace("\n", " ")
+                        errors.append((file_path, line_num, msg))
                         if verbose:
                             import traceback
 
                             traceback.print_exc()
                     except Exception as e:
-                        errors.append(f"ERROR: {file_path} at line {line_num} - {str(e)}")
+                        errors.append((file_path, line_num, str(e)))
                         if verbose:
                             import traceback
 
                             traceback.print_exc()
 
         except Exception as e:
-            errors.append(f"ERROR: {file_path} - Failed to open/read file: {str(e)}")
+            # File-level errors use line 0 so they sort first
+            errors.append((file_path, 0, f"Failed to open/read file: {str(e)}"))
             if verbose:
                 import traceback
 
                 traceback.print_exc()
 
-    # 3. Report results
+    # 3. Post-validation: check type references
+    defined_types = set()
+    for _, _, item in parsed_items:
+        if isinstance(item, TypeDef):
+            defined_types.add(item.name)
+        elif isinstance(item, Enumeration):
+            defined_types.add(item.name)
+
+    for file_path, line_num, item in parsed_items:
+        if isinstance(item, TypeDef):
+            for prop in item.properties:
+                referenced = get_referenced_types(prop.type)
+                for ref_type in referenced:
+                    if ref_type not in defined_types:
+                        errors.append((
+                            file_path,
+                            line_num,
+                            f"Unknown type '{ref_type}' referenced in property '{item.name}.{prop.name}'"
+                        ))
+
+    # 4. Check for circular dependencies using structural dependencies
+    # Build dependency graph: type_name -> set of types it depends on structurally
+    type_to_location: dict[str, tuple[Path, int]] = {}
+    dependency_graph: dict[str, set[str]] = {}
+
+    for file_path, line_num, item in parsed_items:
+        if isinstance(item, TypeDef):
+            type_to_location[item.name] = (file_path, line_num)
+            deps: set[str] = set()
+            for prop in item.properties:
+                structural_deps = get_structural_dependencies(prop.type)
+                # Only include dependencies on other TypeDefs (not enums)
+                for dep in structural_deps:
+                    if dep in defined_types and dep not in {e.name for _, _, e in parsed_items if isinstance(e, Enumeration)}:
+                        deps.add(dep)
+            dependency_graph[item.name] = deps
+
+    # Detect cycles using DFS
+    def find_cycle(node: str, visited: set[str], path: list[str]) -> list[str] | None:
+        if node in path:
+            cycle_start = path.index(node)
+            return path[cycle_start:] + [node]
+        if node in visited:
+            return None
+        visited.add(node)
+        path.append(node)
+        for dep in dependency_graph.get(node, set()):
+            cycle = find_cycle(dep, visited, path)
+            if cycle:
+                return cycle
+        path.pop()
+        return None
+
+    visited: set[str] = set()
+    for type_name in dependency_graph:
+        if type_name not in visited:
+            cycle = find_cycle(type_name, visited, [])
+            if cycle:
+                # Report error for the first type in the cycle
+                first_type = cycle[0]
+                file_path, line_num = type_to_location.get(first_type, (Path("unknown"), 0))
+                cycle_str = " -> ".join(cycle)
+                errors.append((
+                    file_path,
+                    line_num,
+                    f"Circular dependency detected: {cycle_str}"
+                ))
+                break  # Report only one cycle error to avoid duplicates
+
+    # 5. Report results
     if not errors:
         print("All checks passed!")
     else:
+        # Sort errors by file name, then line number
+        errors.sort(key=lambda e: (str(e[0]), e[1]))
         print(f"Found {len(errors)} errors.")
-        for error in errors:
-            print(error)
+        for file_path, line_num, msg in errors:
+            if line_num == 0:
+                print(f"{file_path}:  ERROR - {msg}")
+            else:
+                print(f"{file_path} at line {line_num}:  ERROR - {msg}")
 
 
 def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> None:
@@ -187,10 +279,21 @@ def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> 
     from pydantic import TypeAdapter
 
     # 1. Collect all definitions across all files to support cross-file types
+    # Process files with import resolution
     all_definitions = []
     def_adapter = TypeAdapter(EngnDataModel)
+    processed_files: set[Path] = set()
+    files_queue = list(files_to_process)
 
-    for file_path in files_to_process:
+    while files_queue:
+        file_path = files_queue.pop(0)
+
+        # Skip if already processed
+        resolved_path = file_path.resolve()
+        if resolved_path in processed_files:
+            continue
+        processed_files.add(resolved_path)
+
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -200,6 +303,15 @@ def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                     try:
                         item = def_adapter.validate_json(line)
                         all_definitions.append(item)
+
+                        # Handle imports - add imported files to the queue
+                        if isinstance(item, Import) and item.files:
+                            for import_file in item.files:
+                                import_path = Path(import_file)
+                                if not import_path.is_absolute():
+                                    import_path = file_path.parent / import_path
+                                if import_path.exists():
+                                    files_queue.append(import_path)
                     except:
                         pass  # Not a definition
         except Exception as e:
@@ -210,11 +322,17 @@ def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> 
             else:
                 print(f"ERROR: {file_path} - Failed to read: {e}")
 
+    # Update files_to_process to include all resolved files
+    files_to_process = list(processed_files)
+
+    # Filter out Import items - they're directives, not type definitions
+    type_definitions = [d for d in all_definitions if not isinstance(d, Import)]
+
     # 2. Process each file and print
     for file_path in files_to_process:
         print(f"\n{'=' * 20} {file_path} {'=' * 20}")
         try:
-            storage = JSONLStorage(file_path, all_definitions)
+            storage = JSONLStorage(file_path, type_definitions)
             items = storage.read()
             if not items:
                 print("No data items found.")
@@ -243,6 +361,12 @@ def run_print(target: Path | None, working_dir: Path, verbose: bool = False) -> 
                             else ""
                         )
                         print(f"    - {prop.name}: {prop.type} ({presence}{default})")
+                elif isinstance(item, Import):
+                    print(f"\n[Import]")
+                    if item.files:
+                        print(f"  Files: {', '.join(item.files)}")
+                    if item.module:
+                        print(f"  Module: {item.module}")
                 else:
                     # Data instance
                     print(f"\n[{item.__class__.__name__}]")

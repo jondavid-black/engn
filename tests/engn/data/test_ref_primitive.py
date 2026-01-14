@@ -59,7 +59,13 @@ def test_ref_parsing_error_invalid_format():
         TypeDef(name="BadRef", properties=[Property(name="bad", type="ref[Invalid]")])
 
 
-def test_ref_parsing_error_missing_target_type():
+def test_ref_parsing_missing_target_type_falls_back_to_str():
+    """When ref target type doesn't exist, ref falls back to str type.
+
+    This allows model generation to succeed even with forward references
+    or missing types. The actual validation of ref targets is done by
+    run_check() which validates all type references exist.
+    """
     schema_defs: List[Union[TypeDef, Enumeration]] = [
         TypeDef(
             name="MissingType",
@@ -67,8 +73,14 @@ def test_ref_parsing_error_missing_target_type():
         )
     ]
 
-    with pytest.raises(ValueError, match="Unable to resolve dependencies"):
-        gen_pydantic_models(schema_defs)
+    # Model generation succeeds - ref falls back to str
+    pydantic_models = gen_pydantic_models(schema_defs)
+    assert "MissingType" in pydantic_models
+
+    # The field type is str (fallback when target type not found)
+    from typing import Optional
+    MissingType = pydantic_models["MissingType"]
+    assert MissingType.model_fields["bad"].annotation == Optional[str]
 
 
 def test_ref_parsing_error_missing_target_property():

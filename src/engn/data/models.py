@@ -11,6 +11,7 @@ _MODEL_REGISTRY: Dict[str, Any] = {}
 def get_referenced_types(v: str) -> Set[str]:
     """
     Extracts all custom types referenced in a type definition string.
+    Includes both structural dependencies and ref[] references.
     """
     if v in PRIMITIVE_TYPE_MAP:
         return set()
@@ -40,6 +41,39 @@ def get_referenced_types(v: str) -> Set[str]:
         return set()
 
     # Assume it's a direct type reference
+    return {v}
+
+
+def get_structural_dependencies(v: str) -> Set[str]:
+    """
+    Extracts custom types that are structural dependencies (embedded types).
+    Excludes ref[] types since those are string references at runtime,
+    not actual embedded type dependencies.
+    """
+    if v in PRIMITIVE_TYPE_MAP:
+        return set()
+
+    if v.startswith("list[") and v.endswith("]"):
+        inner = v[5:-1].strip()
+        return get_structural_dependencies(inner)
+
+    if v.startswith("map[") and v.endswith("]"):
+        inner = v[4:-1].strip()
+        parts = inner.split(",", 1)
+        if len(parts) == 2:
+            key_type = parts[0].strip()
+            val_type = parts[1].strip()
+            refs = get_structural_dependencies(val_type)
+            if key_type not in ("int", "str"):
+                refs.add(key_type)
+            return refs
+        return set()
+
+    # ref[] types are NOT structural dependencies
+    if v.startswith("ref[") and v.endswith("]"):
+        return set()
+
+    # Assume it's a direct type reference (structural dependency)
     return {v}
 
 
@@ -233,9 +267,8 @@ class Property(BaseDataModel):
 
             return v
 
-        # If not primitive, we ensure it's a reference to a TypeDef or Enum defined elsewhere.
+        # If not primitive, assume it's a reference to a TypeDef or Enum.
         # Strict validation is performed at the Schema level to support forward references.
-        # If the registry is already populated (e.g. interactive use), we can check it.
         return v
 
 
@@ -287,4 +320,30 @@ class Schema(BaseDataModel):
                         raise ValueError(
                             f"Unknown type '{ref_type}' referenced in property '{typedef.name}.{prop.name}'"
                         )
+        return self
+
+
+class Import(BaseDataModel):
+    """
+    Defines an import directive to include other JSONL files or modules.
+
+    Use files to include additional JSONL files in processing.
+    Use module to reference a Python module (no action taken currently).
+    """
+
+    engn_type: Literal["import"] = "import"
+    files: list[str] | None = Field(
+        default=None, description="List of file paths to include in processing"
+    )
+    module: str | None = Field(
+        default=None, description="Python module name to import (reserved for future use)"
+    )
+
+    @model_validator(mode="after")
+    def validate_import(self) -> "Import":
+        """Ensure at least one of files or module is provided."""
+        if not self.files and not self.module:
+            raise ValueError("Import must specify either 'files' or 'module'")
+        if self.files and self.module:
+            raise ValueError("Import cannot specify both 'files' and 'module'")
         return self

@@ -3,11 +3,11 @@ from typing import Generic, Type, TypeVar, List, Union, Annotated, Sequence
 
 from pydantic import BaseModel, TypeAdapter, Field
 
-from engn.data.models import TypeDef, Enumeration
+from engn.data.models import TypeDef, Enumeration, Import
 from engn.data.dynamic import gen_pydantic_models
 
 # Define the discriminated union of supported types
-EngnDataModel = Annotated[Union[TypeDef, Enumeration], Field(discriminator="engn_type")]
+EngnDataModel = Annotated[Union[TypeDef, Enumeration, Import], Field(discriminator="engn_type")]
 
 T = TypeVar("T", bound=BaseModel)
 
