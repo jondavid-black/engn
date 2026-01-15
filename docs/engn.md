@@ -24,9 +24,20 @@ Initialize a new `engn` project in a specific directory:
 engn init my_project
 ```
 
+Initialize a project non-interactively using command-line flags:
+
+```bash
+engn init my_project --name "My Project" --language "SysML v2" --strategy "unified python"
+```
+
 This command creates the following structure:
-- `engn.toml`: Configuration file
-- `arch/`: Architecture artifacts directory
+- `engn.jsonl`: Core configuration and data file (contains `ProjectConfig` and imported modules)
+- `mbse/`: Model-Based System Engineering artifacts directory
 - `pm/`: Program management artifacts directory
-- `ux/`: User experience artifacts directory
+
+#### Initialization Options
+
+- `--name`: The printable name of the project (e.g., "My Satellite Project").
+- `--language`: The MBSE language to be used (e.g., "SysML v2").
+- `--strategy`: The implementation strategy (e.g., "unified python", "python backend / typescript frontend").
 
