@@ -12,8 +12,11 @@ class AuthConfig:
 
 @dataclass
 class ProjectConfig:
+    name: str = "New Project"
+    mbse_language: str = "SysML v2"
+    implementation_strategy: str = "unified python"
     pm_path: str = "pm"
-    sysengn_path: str = "arch"
+    sysengn_path: str = "mbse"
     auth: AuthConfig | None = None
 
     @classmethod
@@ -31,8 +34,13 @@ class ProjectConfig:
                         data = json.loads(line)
                         if data.get("engn_type") == "ProjectConfig":
                             return cls(
+                                name=data.get("name", "New Project"),
+                                mbse_language=data.get("mbse_language", "SysML v2"),
+                                implementation_strategy=data.get(
+                                    "implementation_strategy", "unified python"
+                                ),
                                 pm_path=data.get("pm_path", "pm"),
-                                sysengn_path=data.get("sysengn_path", "arch"),
+                                sysengn_path=data.get("sysengn_path", "mbse"),
                                 auth=AuthConfig(),  # Auth moved to workspace level
                             )
             except Exception:
@@ -61,7 +69,7 @@ class ProjectConfig:
 
             return cls(
                 pm_path=paths.get("pm", "pm"),
-                sysengn_path=paths.get("sysengn", "arch"),
+                sysengn_path=paths.get("sysengn", "mbse"),
                 auth=auth_config,
             )
         except Exception:

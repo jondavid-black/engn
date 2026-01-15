@@ -6,7 +6,7 @@ def test_load_defaults(tmp_path: Path):
     """Test loading configuration when no file exists returns defaults."""
     config = ProjectConfig.load(tmp_path)
     assert config.pm_path == "pm"
-    assert config.sysengn_path == "arch"
+    assert config.sysengn_path == "mbse"
 
 
 def test_load_from_file(tmp_path: Path):
@@ -35,7 +35,7 @@ def test_load_partial_config(tmp_path: Path):
 
     config = ProjectConfig.load(tmp_path)
     assert config.pm_path == "custom_pm"
-    assert config.sysengn_path == "arch"  # default
+    assert config.sysengn_path == "mbse"  # default
 
 
 def test_load_invalid_toml(tmp_path: Path):
@@ -46,4 +46,4 @@ def test_load_invalid_toml(tmp_path: Path):
     config = ProjectConfig.load(tmp_path)
     # Should safely return defaults instead of crashing
     assert config.pm_path == "pm"
-    assert config.sysengn_path == "arch"
+    assert config.sysengn_path == "mbse"

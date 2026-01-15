@@ -1,5 +1,6 @@
 import argparse
 import getpass
+import shutil
 import sys
 import importlib.resources
 from pathlib import Path
@@ -753,12 +754,43 @@ def main() -> None:
     set_config_path(project_root / "engn.jsonl")
 
     if args.command == "init":
+        # 1. Ensure core tools are available
+        missing_tools = []
+        for tool in ["git", "bd", "uv"]:
+            if not shutil.which(tool):
+                missing_tools.append(tool)
+
+        if missing_tools:
+            print(f"Error: Required core tools missing: {', '.join(missing_tools)}")
+            print(
+                "Please ensure git, beads (bd), and uv are installed and in your PATH."
+            )
+            sys.exit(1)
+
         # target_path is already determined above if args.path was provided
         if not project_root.exists():
             project_root.mkdir(parents=True)
 
-        project.init_project_structure(project_root)
-        print(f"Initialized engn project in {project_root}")
+        # 2. Collect information from the user
+        config = ProjectConfig.load(project_root)
+
+        print(f"Initializing engn project in: {project_root}")
+        name = input(f"Project Name [{config.name}]: ").strip() or config.name
+        mbse_language = (
+            input(f"MBSE Language [{config.mbse_language}]: ").strip()
+            or config.mbse_language
+        )
+        implementation_strategy = (
+            input(
+                f"Implementation Strategy [{config.implementation_strategy}]: "
+            ).strip()
+            or config.implementation_strategy
+        )
+
+        project.init_project_structure(
+            project_root, name, mbse_language, implementation_strategy
+        )
+        print(f"Successfully initialized engn project in {project_root}")
         sys.exit(0)
 
     elif args.command == "check":
