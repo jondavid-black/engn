@@ -5,5 +5,4 @@ theme:
 nav:
   - Digital Engine: index.md
   - Engn: engn.md
-  - SysEngn: sysengn.md
-  - ProjEngn: projengn.md
+  - CLI Reference: cli.md
