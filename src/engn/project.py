@@ -26,7 +26,7 @@ def init_project_structure(
     # Prepare lines for engn.jsonl
     # We want to preserve existing content but ensure ProjectConfig is present/updated
     lines = []
-    type_def_found = False
+    import_found = False
     project_config_found = False
 
     if config_path.exists():
@@ -36,20 +36,17 @@ def init_project_structure(
                 if not line:
                     continue
                 data = json.loads(line)
-                if (
+                if data.get("engn_type") == "import" and "engn.project" in data.get(
+                    "modules", []
+                ):
+                    import_found = True
+                    lines.append(line)
+                elif (
                     data.get("name") == "ProjectConfig"
                     and data.get("engn_type") == "type_def"
                 ):
-                    type_def_found = True
-                    # Update type_def properties
-                    data["properties"] = [
-                        {"name": "name", "type": "str"},
-                        {"name": "mbse_language", "type": "str"},
-                        {"name": "implementation_strategy", "type": "str"},
-                        {"name": "pm_path", "type": "str", "default": "pm"},
-                        {"name": "sysengn_path", "type": "str", "default": "mbse"},
-                    ]
-                    lines.append(json.dumps(data))
+                    # Remove legacy local type_def
+                    continue
                 elif data.get("engn_type") == "ProjectConfig":
                     project_config_found = True
                     # Update instance
@@ -62,22 +59,9 @@ def init_project_structure(
                 else:
                     lines.append(line)
 
-    if not type_def_found:
+    if not import_found:
         lines.insert(
-            0,
-            json.dumps(
-                {
-                    "engn_type": "type_def",
-                    "name": "ProjectConfig",
-                    "properties": [
-                        {"name": "name", "type": "str"},
-                        {"name": "mbse_language", "type": "str"},
-                        {"name": "implementation_strategy", "type": "str"},
-                        {"name": "pm_path", "type": "str", "default": "pm"},
-                        {"name": "sysengn_path", "type": "str", "default": "mbse"},
-                    ],
-                }
-            ),
+            0, json.dumps({"engn_type": "import", "modules": ["engn.project"]})
         )
 
     if not project_config_found:

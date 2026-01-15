@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from engn.main import main
 
 
@@ -33,8 +33,8 @@ def test_engn_init_command_creates_files_and_directories(tmp_path, capsys):
 
     # Check content of engn.jsonl
     content = config_file.read_text()
-    assert '"engn_type": "type_def"' in content
-    assert '"name": "ProjectConfig"' in content
+    assert '"engn_type": "import"' in content
+    assert '"modules": ["engn.project"]' in content
     assert '"sysengn_path": "mbse"' in content
     assert '"name": "Test Project"' in content
 
