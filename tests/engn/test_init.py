@@ -88,7 +88,7 @@ def test_engn_init_command_with_flags(tmp_path, capsys):
         # Mock Path.cwd to return the temporary directory
         with patch("pathlib.Path.cwd", return_value=tmp_path):
             with patch("shutil.which", return_value="/usr/bin/tool"):
-                with patch("subprocess.run") as mock_run:
+                with patch("subprocess.run"):
                     with pytest.raises(SystemExit) as e:
                         main()
                     assert e.value.code == 0
