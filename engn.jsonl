@@ -1,3 +1,2 @@
 {"engn_type": "import", "modules": ["engn.project"]}
-{"engn_type": "User", "id": "2b1e7c19-e4af-47ff-a821-3ab7c5d89c41", "email": "admin@example.com", "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$PnDnKeSvBG8UEV+v7lDDlg$pYONuvy/SDiCLNKLm7VEdX1AtaIZse+n5y4AyDlXVmE", "roles": ["ADMIN", "USER"], "roles_hash": "0aee2ab25317909d829fb504844871c48d2e1a1312bc4df557405a4458b48728", "theme_preference": "DARK", "name": "Admin User", "first_name": "Admin", "last_name": "User"}
 {"engn_type": "ProjectConfig", "name": "Digital Engine", "mbse_language": "SysML v2", "implementation_strategy": "unified python", "pm_path": "pm", "sysengn_path": "mbse"}

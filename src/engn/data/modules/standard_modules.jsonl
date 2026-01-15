@@ -1,2 +1,2 @@
-{"engn_type": "module", "name": "SysML-v1", "description": "Standard SysML v1 data types and enumerations", "files": ["sysml_v1/sysml_v1_schema.jsonl"]}
+{"engn_type": "module", "name": "SysML-v1", "description": "Standard SysML v1 data types and enumerations", "files": ["mbse/sysml_v1/sysml_v1_schema.jsonl"]}
 {"engn_type": "module", "name": "engn.project", "description": "Core project configuration schema", "files": ["engn/project.jsonl"]}

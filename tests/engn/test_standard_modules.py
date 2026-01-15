@@ -12,4 +12,4 @@ def test_load_standard_modules():
     # Check if SysML-v1 is loaded
     assert "SysML-v1" in _MODULE_REGISTRY
     assert _MODULE_REGISTRY["SysML-v1"].name == "SysML-v1"
-    assert "sysml_v1/sysml_v1_schema.jsonl" in _MODULE_REGISTRY["SysML-v1"].files
+    assert "mbse/sysml_v1/sysml_v1_schema.jsonl" in _MODULE_REGISTRY["SysML-v1"].files
