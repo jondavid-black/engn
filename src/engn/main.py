@@ -626,42 +626,6 @@ def main() -> None:
         help="Show detailed error traces",
     )
 
-    # data command with subcommands
-    data_parser = subparsers.add_parser("data", help="Data management commands")
-    data_subparsers = data_parser.add_subparsers(dest="data_command")
-
-    # data check
-    data_check_parser = data_subparsers.add_parser(
-        "check", help="Check validity of data files"
-    )
-    data_check_parser.add_argument(
-        "target",
-        nargs="?",
-        help="Path to JSONL file or directory to check (default: check all configured paths)",
-    )
-    data_check_parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Show detailed error traces",
-    )
-
-    # data print
-    data_print_parser = data_subparsers.add_parser(
-        "print", help="Print enums, data types, and data in human-readable form"
-    )
-    data_print_parser.add_argument(
-        "target",
-        nargs="?",
-        help="Path to JSONL file or directory to print (default: print all configured paths)",
-    )
-    data_print_parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Show detailed error traces",
-    )
-
     parser.add_argument(
         "-v",
         "--verbose",
@@ -746,19 +710,6 @@ def main() -> None:
         target = Path(args.target).resolve() if args.target else None
         run_print(target, project_root, args.verbose)
         sys.exit(0)
-
-    elif args.command == "data":
-        if args.data_command == "check":
-            target = Path(args.target).resolve() if args.target else None
-            run_check(target, project_root, args.verbose)
-            sys.exit(0)
-        elif args.data_command == "print":
-            target = Path(args.target).resolve() if args.target else None
-            run_print(target, project_root, args.verbose)
-            sys.exit(0)
-        else:
-            data_parser.print_help()
-            sys.exit(0)
 
     else:
         # No command provided

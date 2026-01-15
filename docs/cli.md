@@ -1,23 +1,20 @@
 # CLI Reference
 
 ```
-usage: main.py [-h] [--version] [-v] {init,check,print,data} ...
+usage: main.py [-h] [--version] [-v] {init,check,print} ...
 
 Digital Engine - The Intelligent Engine for Building Systems
 
 positional arguments:
-  {init,check,print,data}
-                        Available commands
-    init                Initialize an engn project in a directory
-    check               Check validity of data files
-    print               Print enums, data types, and data in human-readable
-                        form
-    data                Data management commands
+  {init,check,print}  Available commands
+    init              Initialize an engn project in a directory
+    check             Check validity of data files
+    print             Print enums, data types, and data in human-readable form
 
 options:
-  -h, --help            show this help message and exit
-  --version             Show the version and exit
-  -v, --verbose         Show detailed error traces
+  -h, --help          show this help message and exit
+  --version           Show the version and exit
+  -v, --verbose       Show detailed error traces
 ```
 
 ## engn init
@@ -64,18 +61,4 @@ positional arguments:
 options:
   -h, --help     show this help message and exit
   -v, --verbose  Show detailed error traces
-```
-
-## engn data
-
-```
-usage: main.py data [-h] {check,print} ...
-
-positional arguments:
-  {check,print}
-    check        Check validity of data files
-    print        Print enums, data types, and data in human-readable form
-
-options:
-  -h, --help     show this help message and exit
 ```
