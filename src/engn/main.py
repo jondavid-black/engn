@@ -1,7 +1,6 @@
 import argparse
 import shutil
 import sys
-import importlib.resources
 from pathlib import Path
 from typing import List
 
@@ -21,22 +20,41 @@ from engn.data.models import (
 from engn import project
 
 
+def get_modules_path() -> Path:
+    """Find the standard modules directory."""
+    # 1. Check relative to this file (dev environment)
+    # src/engn/main.py -> ../../modules
+    dev_path = Path(__file__).parent.parent.parent / "modules"
+    if dev_path.exists() and dev_path.is_dir():
+        return dev_path
+
+    # 2. Check for installed location (under engn package)
+    installed_path = Path(__file__).parent / "modules"
+    if installed_path.exists() and installed_path.is_dir():
+        return installed_path
+
+    # 3. Check in current directory (local workspace)
+    local_path = Path.cwd() / "modules"
+    if local_path.exists() and local_path.is_dir():
+        return local_path
+
+    return dev_path
+
+
 def load_standard_modules() -> None:
     """Load standard modules packaged with the application."""
     try:
-        # standard_modules.jsonl is in engn.data.modules
-        resource_path = importlib.resources.files("engn.data.modules").joinpath(
-            "standard_modules.jsonl"
-        )
+        modules_path = get_modules_path()
+        standard_modules_file = modules_path / "standard_modules.jsonl"
 
-        if not resource_path.is_file():
+        if not standard_modules_file.is_file():
             return
 
         from pydantic import TypeAdapter
 
         adapter = TypeAdapter(EngnDataModel)
 
-        with resource_path.open("r", encoding="utf-8") as f:
+        with open(standard_modules_file, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -198,15 +216,12 @@ def run_check(target: Path | None, project_root: Path, verbose: bool = False) ->
                                                     # Try as standard module resource
                                                     try:
                                                         resource_path = (
-                                                            importlib.resources.files(
-                                                                "engn.data.modules"
-                                                            ).joinpath(import_file)
+                                                            get_modules_path()
+                                                            / import_file
                                                         )
-                                                        # Traversable has is_file()
                                                         if resource_path.is_file():
-                                                            # Convert to Path for storage
                                                             files_queue.append(
-                                                                Path(str(resource_path))
+                                                                resource_path
                                                             )
                                                             continue
                                                     except Exception:
@@ -462,14 +477,11 @@ def run_print(target: Path | None, project_root: Path, verbose: bool = False) ->
                                                 # Try as standard module resource
                                                 try:
                                                     resource_path = (
-                                                        importlib.resources.files(
-                                                            "engn.data.modules"
-                                                        ).joinpath(import_file)
+                                                        get_modules_path() / import_file
                                                     )
                                                     if resource_path.is_file():
-                                                        # Convert to Path for storage
                                                         files_queue.append(
-                                                            Path(str(resource_path))
+                                                            resource_path
                                                         )
                                                         continue
                                                 except Exception:

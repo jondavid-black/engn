@@ -62,7 +62,11 @@ format = ["pretty"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/engn"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"modules" = "engn/modules"
+
 [tool.hatch.build.targets.sdist]
 include = [
     "/src",
+    "/modules",
 ]
