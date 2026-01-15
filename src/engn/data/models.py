@@ -106,6 +106,9 @@ class Enumeration(BaseDataModel):
     """
 
     engn_type: Literal["enum"] = "enum"
+    namespace: str | None = Field(
+        default=None, description="Namespace for name deconfliction"
+    )
     name: str = Field(description="Unique name of the enumeration")
     description: str | None = Field(
         default=None, description="Description of what this enum represents"
@@ -113,7 +116,8 @@ class Enumeration(BaseDataModel):
     values: list[str] = Field(description="List of allowed values")
 
     def model_post_init(self, __context: Any) -> None:
-        _MODEL_REGISTRY[self.name] = self
+        key = f"{self.namespace}.{self.name}" if self.namespace else self.name
+        _MODEL_REGISTRY[key] = self
 
 
 class Property(BaseDataModel):
@@ -295,6 +299,9 @@ class TypeDef(BaseDataModel):
     """
 
     engn_type: Literal["type_def"] = "type_def"
+    namespace: str | None = Field(
+        default=None, description="Namespace for name deconfliction"
+    )
     name: str = Field(description="Unique name of the data type")
     extends: str | None = Field(
         default=None, description="Name of the parent type to extend"
@@ -307,7 +314,8 @@ class TypeDef(BaseDataModel):
     )
 
     def model_post_init(self, __context: Any) -> None:
-        _MODEL_REGISTRY[self.name] = self
+        key = f"{self.namespace}.{self.name}" if self.namespace else self.name
+        _MODEL_REGISTRY[key] = self
 
 
 class Schema(BaseDataModel):
@@ -330,7 +338,20 @@ class Schema(BaseDataModel):
         """
         Ensure all types referenced in properties are defined within the schema.
         """
-        defined_types = {t.name for t in self.types} | {e.name for e in self.enums}
+        defined_types = set()
+        for t in self.types:
+            key = f"{t.namespace}.{t.name}" if t.namespace else t.name
+            defined_types.add(key)
+            # Also allow referencing by short name if no conflict?
+            # For now, let's keep it simple and add both if namespace exists
+            if t.namespace:
+                defined_types.add(t.name)
+
+        for e in self.enums:
+            key = f"{e.namespace}.{e.name}" if e.namespace else e.name
+            defined_types.add(key)
+            if e.namespace:
+                defined_types.add(e.name)
 
         for typedef in self.types:
             for prop in typedef.properties:
