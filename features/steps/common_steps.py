@@ -2,6 +2,7 @@ from behave import given, when, then
 import subprocess
 import sys
 import os
+import shlex
 from pathlib import Path
 
 # Add src to sys.path to allow imports
@@ -22,7 +23,7 @@ def step_app_installed(context, app_name):
 def step_run_command(context, command):
     # We run the command using subprocess to simulate real CLI usage
     # We use 'uv run' to ensure we are in the correct environment or call python -m
-    cmd_parts = command.split()
+    cmd_parts = shlex.split(command)
     # Replace the command name with python -m <module> execution for test robustness in dev
     if cmd_parts[0] == "engn":
         cmd_parts[0] = "engn.main"

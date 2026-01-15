@@ -587,6 +587,14 @@ def main() -> None:
         default=".",
         help="Path to initialize (default: current directory)",
     )
+    init_parser.add_argument("--name", help="Printable project name")
+    init_parser.add_argument(
+        "--language", help="MBSE language (e.g. SysML v1, SysML v2)"
+    )
+    init_parser.add_argument(
+        "--strategy",
+        help="Implementation strategy (e.g. unified python, unified go)",
+    )
 
     # check
     check_parser = subparsers.add_parser("check", help="Check validity of data files")
@@ -701,18 +709,27 @@ def main() -> None:
         # 2. Collect information from the user
         config = ProjectConfig.load(project_root)
 
-        print(f"Initializing engn project in: {project_root}")
-        name = input(f"Project Name [{config.name}]: ").strip() or config.name
-        mbse_language = (
-            input(f"MBSE Language [{config.mbse_language}]: ").strip()
-            or config.mbse_language
-        )
-        implementation_strategy = (
-            input(
-                f"Implementation Strategy [{config.implementation_strategy}]: "
-            ).strip()
-            or config.implementation_strategy
-        )
+        # Use provided arguments or fallback to config defaults
+        name = args.name or config.name
+        mbse_language = args.language or config.mbse_language
+        implementation_strategy = args.strategy or config.implementation_strategy
+
+        # Only prompt if not provided via CLI
+        if not all([args.name, args.language, args.strategy]):
+            print(f"Initializing engn project in: {project_root}")
+            if not args.name:
+                name = input(f"Project Name [{name}]: ").strip() or name
+            if not args.language:
+                mbse_language = (
+                    input(f"MBSE Language [{mbse_language}]: ").strip() or mbse_language
+                )
+            if not args.strategy:
+                implementation_strategy = (
+                    input(
+                        f"Implementation Strategy [{implementation_strategy}]: "
+                    ).strip()
+                    or implementation_strategy
+                )
 
         project.init_project_structure(
             project_root, name, mbse_language, implementation_strategy

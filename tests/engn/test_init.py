@@ -70,6 +70,40 @@ def test_engn_init_command_with_path(tmp_path, capsys):
     assert (target_path / "engn.jsonl").is_file()
 
 
+def test_engn_init_command_with_flags(tmp_path, capsys):
+    # Mock sys.argv to simulate running 'engn init' with flags
+    with patch(
+        "sys.argv",
+        [
+            "engn",
+            "init",
+            "--name",
+            "Flag Project",
+            "--language",
+            "SysML v2",
+            "--strategy",
+            "unified python",
+        ],
+    ):
+        # Mock Path.cwd to return the temporary directory
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            with patch("shutil.which", return_value="/usr/bin/tool"):
+                with patch("subprocess.run") as mock_run:
+                    with pytest.raises(SystemExit) as e:
+                        main()
+                    assert e.value.code == 0
+
+    # Check if directories were created
+    assert (tmp_path / "mbse").is_dir()
+    assert (tmp_path / "pm").is_dir()
+
+    # Check content of engn.jsonl
+    config_file = tmp_path / "engn.jsonl"
+    assert config_file.is_file()
+    content = config_file.read_text()
+    assert '"name": "Flag Project"' in content
+
+
 def test_engn_init_command_missing_tools(tmp_path, capsys):
     # Mock sys.argv to simulate running 'engn init'
     with patch("sys.argv", ["engn", "init"]):
