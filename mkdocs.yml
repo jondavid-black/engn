@@ -2,6 +2,9 @@ site_name: Digital Engine
 theme:
   name: material
 
+markdown_extensions:
+  - mkdocs_argparse
+
 nav:
   - Digital Engine: index.md
   - Engn: engn.md

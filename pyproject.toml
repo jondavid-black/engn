@@ -23,6 +23,7 @@ engn = "engn.main:main"
 dev = [
     "behave>=1.3.3",
     "mkdocs>=1.6.1",
+    "mkdocs-argparse>=0.0.1",
     "mkdocs-material>=9.7.1",
     "pyright>=1.1.408",
     "pytest>=9.0.2",

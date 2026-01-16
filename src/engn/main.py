@@ -566,7 +566,7 @@ def run_print(target: Path | None, project_root: Path, verbose: bool = False) ->
                 print(f"ERROR: {file_path} - {e}")
 
 
-def main() -> None:
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Digital Engine - The Intelligent Engine for Building Systems"
     )
@@ -632,7 +632,11 @@ def main() -> None:
         action="store_true",
         help="Show detailed error traces",
     )
+    return parser
 
+
+def main() -> None:
+    parser = get_parser()
     args = parser.parse_args()
 
     # Load standard modules before processing commands
