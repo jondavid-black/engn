@@ -568,7 +568,8 @@ def run_print(target: Path | None, project_root: Path, verbose: bool = False) ->
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Digital Engine - The Intelligent Engine for Building Systems"
+        prog="engn",
+        description="Digital Engine - The Intelligent Engine for Building Systems",
     )
     parser.add_argument(
         "--version", action="store_true", help="Show the version and exit"
